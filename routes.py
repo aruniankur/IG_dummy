@@ -142,7 +142,7 @@ def register_routes(app,db):
                         # with app.test_request_context():
                         #     verification_url = url_for("app.VerifyEmail", token=verification_token, _external=True)
                         #     print(f'Generated verification URL: {verification_url}')
-                        verification_url = '/verify_email/' + verification_token
+                        verification_url = 'https://ig-dummy.onrender.com'+'/verify_email/' + verification_token
                         email_body = f"Click the link below to verify your email:\n{verification_url}"
                         #print(email_body)
                         hashed_password = generate_password_hash(password1+email.lower(), method='pbkdf2:sha256')
