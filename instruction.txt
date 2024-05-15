@@ -1,0 +1,77 @@
+instruction on using the apis : 
+(please handle them with care,i have not added unit test till now)
+
+jwt timeout -> 5mins 
+
+it contain following apis :
+-> this is the link https://ig-dummy.onrender.com
+
+api 1 : 
+https://ig-dummy.onrender.com/ 
+
+method : (get) 
+{'test': 'Subject'}
+
+api 2 :
+https://ig-dummy.onrender.com/login
+method : (post)
+input -> {
+ "referer":"t",
+ "email":"arunitowardnew@gmail.com",
+ "password":"123wer"
+}
+
+output:
+1-> {'message': 'Invalid username or password'}, 401
+2-> {'message': 'Missing email or password'}, 400
+3-> {'login': True, 'token': access_token}, 200
+
+api 3 :
+https://ig-dummy.onrender.com/protected
+jwt_required
+method: GET
+output: 
+{'logged_in_as': current_user}, 200
+
+api 4: 
+https://ig-dummy.onrender.com/signup
+method: post
+
+input: 
+{
+ "name":"nkaaaaa",
+ "email":"arunitowardnew@gmail.com",
+ "password1":"123wer",
+ "password2":"123wer",
+ "status":"new"
+}
+
+output:
+1-> {'message': 'Email already exists. Try logging in.'}, 401
+2-> {'message': 'PASSWORDS MISMATCH'}, 401
+3-> {'message': 'User registered successfully. Check your email for verification'}, 200
+4-> {'message': 'try again, Error occured'}, 401
+
+api 5:
+https://ig-dummy.onrender.com/verify_email/<token1>
+need token, which will be send to your email 
+
+method: GET
+{'message': 'Email verified successfully. Login again to continue.'}, 200
+{'message': 'Invalid verification token.'}, 400
+
+api 6: 
+https://ig-dummy.onrender.com/checkAuthentication
+jwt_required
+method: get
+{"status" : "pass"}, 200
+{"status": "fail"}, 200
+{"status": "fail internally"}, 200
+
+api 7: 
+https://ig-dummy.onrender.com/logout
+jwt_required
+method: get
+{"msg": "logout successful"},200
+or 
+{"msg": "unauthorised access"},400
