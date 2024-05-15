@@ -1,0 +1,19 @@
+flask --app run.py --debug run
+
+deactivate
+
+
+
+ok so here is what to do if get stuck 
+
+code for db initialization
+
+flask db init
+
+flask db migrate
+flask db upgrade
+
+### and delete the migrations folder 
+
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:1234@localhost:5432/dummy'
+                                                    //username:password@locahost:port/dbname
