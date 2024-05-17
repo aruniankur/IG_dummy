@@ -11,8 +11,8 @@ from flask_jwt_extended import JWTManager, create_access_token, jwt_required, ge
 from flask_mail import Mail, Message
 import uuid
 import smtplib
-from routes.dashboard import userdashboard, reverification, datakey, change_password, switchdataflag, configurations
-from routes.settingsuri import Settings, generatekey, DeleteUser, Updatememberaccess
+from dashboard import userdashboard, reverification, datakey, change_password, switchdataflag, configurations
+from settingsuri import Settings, generatekey, DeleteUser, Updatememberaccess
 from routes.authorise import Login, Logout, Protected, checkAuthentication, VerifyEmail
 
 def register_routes(app,db):
