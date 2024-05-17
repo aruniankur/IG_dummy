@@ -1,7 +1,7 @@
 flask --app run.py --debug run
 
 deactivate
-
+source venv/bin/activate
 
 
 ok so here is what to do if get stuck 
