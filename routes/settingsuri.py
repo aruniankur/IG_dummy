@@ -2,10 +2,10 @@ from flask import Flask, request,redirect, jsonify
 import random
 import string
 from flask_restful import Api, Resource
-from models import User, Data, Workstation, ZohoInfo, UserDataMapping, Subscription, SubDataMapping, Company, DataConfiguration
+from ..models import User, Data, Workstation, ZohoInfo, UserDataMapping, Subscription, SubDataMapping, Company, DataConfiguration
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity,set_access_cookies, unset_jwt_cookies
 import json
-from models import db
+from ..models import db
 
 class Settings(Resource):
     @jwt_required()
