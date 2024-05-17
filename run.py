@@ -1,7 +1,7 @@
 from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-from routes import register_routes 
+from route import register_routes 
 from models import db
 import os
 
