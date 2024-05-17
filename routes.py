@@ -138,8 +138,15 @@ def register_routes(app,db):
     api.add_resource(Logout, '/logout')
     api.add_resource(Signup, '/signup')
     api.add_resource(VerifyEmail, '/verify_email/<token1>')
-# Register the blueprint with the application
     api.add_resource(checkAuthentication, '/checkAuthentication')
     api.add_resource(createCompany, '/createCompany')
-    api.add_resource(createCompany, '/createCompany')
-    
+    api.add_resource(userdashboard, '/userdashboard')
+    api.add_resource(reverification, '/reverification')
+    api.add_resource(datakey, '/datakey')
+    api.add_resource(change_password, '/change_password')
+    api.add_resource(switchdataflag, '/switchdataflag')
+    api.add_resource(configurations, '/configurations')
+    api.add_resource(Settings, '/Settings')
+    api.add_resource(generatekey, '/generatekey')
+    api.add_resource(DeleteUser, '/DeleteUser')
+    api.add_resource(Updatememberaccess, '/Updatememberaccess')

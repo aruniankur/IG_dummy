@@ -107,3 +107,4 @@ class VerifyEmail(Resource):
             return {'message': 'Email verified successfully. Login again to continue.'}, 200
         else:
             return {'message': 'Invalid verification token.'}, 400
+
