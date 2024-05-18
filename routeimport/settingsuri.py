@@ -42,10 +42,11 @@ class Settings(Resource):
         database=Data.query.filter_by(id = user.data_id).first()
         zoho_info = ZohoInfo.query.filter_by(database=database).first()
         data_config = DataConfiguration.query.filter_by(database=database).first()
-        if not database.company:
-            company = Company(database=database, name=database.name)
-            db.session.add(company)
-            db.session.commit()
+        if database:
+            if not database.company:
+                company = Company(database=database, name=database.name)
+                db.session.add(company)
+                db.session.commit()
         if not data_config:
             config_dict = {'ADDITIONAL_FIELDS':[], 'SEARCH_FIELDS':[]}
             invoice_config_dict = {"proforma-invoice":{"invoice-class":"proforma-invoice", "invoice-file": "invoices/proforma_invoice.html"},
@@ -59,19 +60,20 @@ class Settings(Resource):
             db.session.commit()
             data_config= new_data_config
         member_access={}
-        for member in database.userdatamappings:
-            if member.operation_role not in ["ADMIN", "BASIC"]:
-                access_dict = json.loads(member.operation_role)
-                #print(type(access_dict))
-            else:
-                access_dict = {"pages":["INVENTORY", "PRODUCTION", "WORKSTATION", "ORDERS", "PURCHASE", "MRP", "MASTERS"],
-                                "access":{"INVENTORY":"VIEWER",
-                                "PRODUCTION":"VIEWER", "WORKSTATION":"VIEWER", "ORDERS":"VIEWER",
-                                "PURCHASE":"VIEWER", "MRP":"VIEWER", "MASTERS":"VIEWER"}}
-                dict_string = json.dumps(access_dict)
-                member.operation_role = dict_string
-                db.session.commit()
-            member_access[member.id] = access_dict
+        if database:
+            for member in database.userdatamappings:
+                if member.operation_role not in ["ADMIN", "BASIC"]:
+                    access_dict = json.loads(member.operation_role)
+                    #print(type(access_dict))
+                else:
+                    access_dict = {"pages":["INVENTORY", "PRODUCTION", "WORKSTATION", "ORDERS", "PURCHASE", "MRP", "MASTERS"],
+                                    "access":{"INVENTORY":"VIEWER",
+                                    "PRODUCTION":"VIEWER", "WORKSTATION":"VIEWER", "ORDERS":"VIEWER",
+                                    "PURCHASE":"VIEWER", "MRP":"VIEWER", "MASTERS":"VIEWER"}}
+                    dict_string = json.dumps(access_dict)
+                    member.operation_role = dict_string
+                    db.session.commit()
+                member_access[member.id] = access_dict
         ROLES = ["BASIC", "ADMIN"]
         #print(createjson(database))
         response = {'user': createjson(user), 'members': createjson(members),'roles':ROLES,'zoho_info':createjson(zoho_info),'member_access':member_access, 'item_master_fields':json.loads(data_config.item_master_config),'segment':["settings"],  'database':createjson(database)}
