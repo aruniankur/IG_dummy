@@ -11,9 +11,9 @@ from flask_jwt_extended import JWTManager, create_access_token, jwt_required, ge
 from flask_mail import Mail, Message
 import uuid
 import smtplib
-from .routes.dashboard import userdashboard, reverification, datakey, change_password, switchdataflag, configurations
-from .routes.settingsuri import Settings, generatekey, DeleteUser, Updatememberaccess
-from .routes.authorise import Login, Logout, Protected, checkAuthentication, VerifyEmail
+from routeimport import dashboard
+from routeimport import settingsuri
+from routeimport import authorise
 
 def register_routes(app,db):
     app.config['JWT_SECRET_KEY'] = 'YL8ck4TG1@cJvGfY#e5USH93@xCGu9'
@@ -133,20 +133,20 @@ def register_routes(app,db):
     #     def post(self):
             
     api.add_resource(Index, '/')
-    api.add_resource(Login, '/login')
-    api.add_resource(Protected, '/protected')
-    api.add_resource(Logout, '/logout')
+    api.add_resource(authorise.Login, '/login')
+    api.add_resource(authorise.Protected, '/protected')
+    api.add_resource(authorise.Logout, '/logout')
     api.add_resource(Signup, '/signup')
-    api.add_resource(VerifyEmail, '/verify_email/<token1>')
-    api.add_resource(checkAuthentication, '/checkAuthentication')
+    api.add_resource(authorise.VerifyEmail, '/verify_email/<token1>')
+    api.add_resource(authorise.checkAuthentication, '/checkAuthentication')
     api.add_resource(createCompany, '/createCompany')
-    api.add_resource(userdashboard, '/userdashboard')
-    api.add_resource(reverification, '/reverification')
-    api.add_resource(datakey, '/datakey')
-    api.add_resource(change_password, '/change_password')
-    api.add_resource(switchdataflag, '/switchdataflag')
-    api.add_resource(configurations, '/configurations')
-    api.add_resource(Settings, '/Settings')
-    api.add_resource(generatekey, '/generatekey')
-    api.add_resource(DeleteUser, '/DeleteUser')
-    api.add_resource(Updatememberaccess, '/Updatememberaccess')
+    api.add_resource(dashboard.userdashboard, '/userdashboard')
+    api.add_resource(dashboard.reverification, '/reverification')
+    api.add_resource(dashboard.datakey, '/datakey')
+    api.add_resource(dashboard.change_password, '/change_password')
+    api.add_resource(dashboard.switchdataflag, '/switchdataflag')
+    api.add_resource(dashboard.configurations, '/configurations')
+    api.add_resource(settingsuri.Settings, '/Settings')
+    api.add_resource(settingsuri.generatekey, '/generatekey')
+    api.add_resource(settingsuri.DeleteUser, '/DeleteUser')
+    api.add_resource(settingsuri.Updatememberaccess, '/Updatememberaccess')
