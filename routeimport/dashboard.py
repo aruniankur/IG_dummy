@@ -34,7 +34,7 @@ class userdashboard(Resource):
         if not user:
             return {'error':'no user found, please login'}, 400
         else:
-            return user, 200
+            return jsonify(user.to_dict()), 200
 #----------------------------------------------------------------
 class reverification(Resource):
     @jwt_required()
