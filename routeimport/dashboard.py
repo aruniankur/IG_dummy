@@ -8,19 +8,30 @@ import json
 import smtplib
 from models import db
 import datetime
-
+from sqlalchemy.orm import class_mapper
+    
 def createjson(dbt):
-    if dbt is None:
-        return {}
-    result = {}
-    for key, value in dbt.__dict__.items():
-        if key.startswith('_'):
-            continue
-        if isinstance(value, (datetime.date, datetime.datetime)):
-            result[key] = value.isoformat()
-        else:
-            result[key] = value
-    return result
+    def convert_to_dict(instance):
+        if instance is None:
+            return {}
+        result = {}
+        for key, value in instance.__dict__.items():
+            if key.startswith('_'):
+                continue
+            if isinstance(value, (datetime.date, datetime.datetime)):
+                result[key] = value.isoformat()
+            elif isinstance(value, list):
+                result[key] = [convert_to_dict(item) if hasattr(item, '__dict__') else item for item in value]
+            elif hasattr(value, '__dict__'):  # Check if value is a SQLAlchemy model instance
+                result[key] = convert_to_dict(value)
+            else:
+                result[key] = value
+        return result
+    
+    if isinstance(dbt, list):
+        return [convert_to_dict(item) for item in dbt]
+    else:
+        return convert_to_dict(dbt)
 
 #----------------------------------------------------------------
 def sendmail(mail, text):
@@ -68,7 +79,6 @@ class reverification(Resource):
                 return {'message': 'try again, Error occured'}, 401
         else:
             return {'error':'no user found, please check email'}, 401
-        return True
 #----------------------------------------------------------------
 class datakey(Resource):
     @jwt_required()
@@ -149,7 +159,7 @@ class switchdataflag(Resource):
                     db.session.commit()
             return {'message':'Data Flag changed successfully'} , 200
         else:
-            return {'message':'error occurred'} , 401
+            return {'message':'error occurred, check input'} , 401
         
 #----------------------------------------------------------------------------
         
@@ -159,8 +169,9 @@ class configurations(Resource):
         current_user = get_jwt_identity()
         user_id = current_user['user_id']
         user = User.query.filter_by(id=user_id).first()
-        if user['operation_role'] == 'ADMIN':
-            database = Data.query.filter_by(id = user['data_id']).first()
+        
+        if user.operation_role == 'ADMIN':
+            database = Data.query.filter_by(id = user.data_id).first()
             data_config = DataConfiguration.query.filter_by(database=database).first()
             if not data_config:
                 config_dict = {'ADDITIONAL_FIELDS':[], 'SEARCH_FIELDS':[]}
@@ -175,7 +186,8 @@ class configurations(Resource):
                 db.session.commit()
                 data_config= new_data_config
             item_master_dict = json.loads(data_config.item_master_config)
-            field_to_add = request.form.get("item_master_additional_field")
+            data = request.get_json()
+            field_to_add = data.get("item_master_additional_field")
             if field_to_add:
                 item_master_dict["ADDITIONAL_FIELDS"].append({"name":field_to_add})
                 data_config.item_master_config = json.dumps(item_master_dict)

@@ -75,3 +75,97 @@ method: get
 {"msg": "logout successful"},200
 or 
 {"msg": "unauthorised access"},400
+
+
+
+api 8 :
+https://ig-dummy.onrender.com/datakey
+jwt_required
+method: post
+input:
+{"database_key":"YLKS04NS2W"}
+output:
+{'message': 'Successfully added/updated datakey'}, 200
+{'message': 'incorrect datakey'}, 401
+{'message': 'user not found, please login'}, 401
+
+
+api 9 :
+https://ig-dummy.onrender.com/configurations
+jwt jwt_required
+method : post
+
+input :
+{"item_master_additional_field":""}
+
+
+api 10:
+https://ig-dummy.onrender.com/switchdataflag
+jwt_required
+
+method: post 
+input : {
+    "switch_data_flag": '',
+    "database_name":''
+}
+
+api 11:
+https://ig-dummy.onrender.com/change_password
+
+jwt_required
+input : {"old_pass":"123wer",
+"new_pass":"123456",
+"new_pass_2":"123456"}
+
+api 12:
+https://ig-dummy.onrender.com/reverification
+jwt_required
+method : get
+
+
+api 13:
+https://ig-dummy.onrender.com/userdashboard
+jwt_required
+method : get
+
+api 14:
+https://ig-dummy.onrender.com/Settings
+jwt_required
+method : get
+
+api 15 :
+https://ig-dummy.onrender.com/generatekey
+jwt_required
+method : post
+
+input :  {
+    'gen_key' : '1' or '0',
+}
+
+
+api 16:
+https://ig-dummy.onrender.com/DeleteUser
+jwt_required
+method : post 
+input : {
+    'delete_id': ,
+}
+
+api 17 :
+https://ig-dummy.onrender.com/Updatememberaccess
+jwt_required
+method : post 
+input :  {
+    'member_id' : ,
+    'page_names[]' : [],
+    'page_access_levels[]' : []
+}
+
+api 18:
+https://ig-dummy.onrender.com/createCompany
+
+jwt_required
+input : {
+    'subscription_id': ,
+    'company_name':
+}
