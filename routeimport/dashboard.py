@@ -7,6 +7,20 @@ from flask_jwt_extended import JWTManager, create_access_token, jwt_required, ge
 import json
 import smtplib
 from models import db
+import datetime
+
+def createjson(dbt):
+    if dbt is None:
+        return {}
+    result = {}
+    for key, value in dbt.__dict__.items():
+        if key.startswith('_'):
+            continue
+        if isinstance(value, (datetime.date, datetime.datetime)):
+            result[key] = value.isoformat()
+        else:
+            result[key] = value
+    return result
 
 #----------------------------------------------------------------
 def sendmail(mail, text):
@@ -34,7 +48,7 @@ class userdashboard(Resource):
         if not user:
             return {'error':'no user found, please login'}, 400
         else:
-            return jsonify(user.to_dict()), 200
+            return createjson(user), 200
 #----------------------------------------------------------------
 class reverification(Resource):
     @jwt_required()

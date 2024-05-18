@@ -6,6 +6,31 @@ from models import User, Data, Workstation, ZohoInfo, UserDataMapping, Subscript
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity,set_access_cookies, unset_jwt_cookies
 import json
 from models import db
+import datetime
+from sqlalchemy.orm import class_mapper
+    
+def createjson(dbt):
+    def convert_to_dict(instance):
+        if instance is None:
+            return {}
+        result = {}
+        for key, value in instance.__dict__.items():
+            if key.startswith('_'):
+                continue
+            if isinstance(value, (datetime.date, datetime.datetime)):
+                result[key] = value.isoformat()
+            elif isinstance(value, list):
+                result[key] = [convert_to_dict(item) if hasattr(item, '__dict__') else item for item in value]
+            elif hasattr(value, '__dict__'):  # Check if value is a SQLAlchemy model instance
+                result[key] = convert_to_dict(value)
+            else:
+                result[key] = value
+        return result
+    
+    if isinstance(dbt, list):
+        return [convert_to_dict(item) for item in dbt]
+    else:
+        return convert_to_dict(dbt)
 
 class Settings(Resource):
     @jwt_required()
@@ -48,7 +73,8 @@ class Settings(Resource):
                 db.session.commit()
             member_access[member.id] = access_dict
         ROLES = ["BASIC", "ADMIN"]
-        response = {'user': user, 'members':members,'roles':ROLES,'zoho_info':zoho_info, 'database':database, 'member_access':member_access, 'item_master_fields':json.loads(data_config.item_master_config),'segment':["settings"]}
+        #print(createjson(database))
+        response = {'user': createjson(user), 'members': createjson(members),'roles':ROLES,'zoho_info':createjson(zoho_info),'member_access':member_access, 'item_master_fields':json.loads(data_config.item_master_config),'segment':["settings"],  'database':createjson(database)}
         return response, 200
     def post(self):
         current_user = get_jwt_identity()
