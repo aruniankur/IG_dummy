@@ -250,3 +250,187 @@ class delete_category_from_item(Resource):
         
 #----------------------------------------------------------------
 
+class edit_inventory_levels(Resource):
+    @jwt_required()
+    def post(self):
+        current_user = get_jwt_identity()
+        data = request.get_json()
+        user = User.query.filter_by(id=current_user['userid']).first()
+        if user.role != 'MASTERS':
+            return {'message':'method not allowed'} , 401
+        else:
+            database = Data.query.filter_by(id=current_user["data"]).first()
+            item_id = data.get("item_id")
+            mode = data.get("consumption_mode")
+            min_level = data.get("edit_inventory_level_min")
+            max_level = data.get("edit_inventory_level_max")
+
+            if mode and min_level and max_level:
+                item = Item.query.filter_by(database=database, id=item_id).first()
+                item_inv = item.iteminventory
+                if item_inv:
+                    item_inv.consumption_mode = mode
+                    item_inv.min_level = min_level
+                    item_inv.max_level = max_level
+                    db.session.commit()
+                return redirect(request.headers.get('Referer', '/'))
+            return redirect(request.headers.get('Referer', '/'))
+        
+#----------------------------------------------------------------
+
+class edit_finance_info(Resource):
+    @jwt_required()
+    def post(self):
+        current_user = get_jwt_identity()
+        data = request.get_json()
+        user = User.query.filter_by(id=current_user['userid']).first()
+        if user.role != 'MASTERS':
+            return {'message':'method not allowed'} , 401
+        else:
+            database = Data.query.filter_by(id=current_user["data"]).first()
+            item_id = request.form.get("item_id")
+            hsn_code = request.form.get("hsn_code")
+            cost_price = request.form.get("cost_price")
+            sale_price = request.form.get("sale_price")
+            tax = request.form.get("tax")
+
+            if hsn_code and cost_price and sale_price and tax:
+                item = Item.query.filter_by(database=database, id=item_id).first()
+                item_fin = item.itemfinance
+                if item_fin:
+                    item_fin.hsn_code = hsn_code
+                    item_fin.cost_price = cost_price
+                    item_fin.sale_price = sale_price
+                    item_fin.tax = tax
+                    db.session.commit()
+                return redirect(request.headers.get('Referer', '/'))
+            return redirect(request.headers.get('Referer', '/'))
+        
+#-------------------------------------------------------------
+
+class edit_additional_fields(Resource):
+    @jwt_required()
+    def post(self):
+        current_user = get_jwt_identity()
+        data = request.get_json()
+        user = User.query.filter_by(id=current_user['userid']).first()
+        if user.role != 'MASTERS':
+            return {'message':'method not allowed'} , 401
+        else:
+            database = Data.query.filter_by(id=session["data"]).first()
+            item_id = request.form.get("item_id")
+            additional_fields_flag = request.form.get("additional_fields_flag")
+
+            if additional_fields_flag:
+                item = Item.query.filter_by(database=database, id=item_id).first()
+                data_config = DataConfiguration.query.filter_by(database=database).first()
+                if not data_config:
+                    config_dict = {'ADDITIONAL_FIELDS': [], 'SEARCH_FIELDS': []}
+                    new_data_config = DataConfiguration(database=database, item_master_config=json.dumps(config_dict))
+                    db.session.add(new_data_config)
+                    db.session.commit()
+                    data_config = new_data_config
+
+                for field in json.loads(data_config.item_master_config)["ADDITIONAL_FIELDS"]:
+                    field_name = field["name"]
+                    additional_field_edit_value = request.form.get(f"{field_name}_edit")
+                    if additional_field_edit_value:
+                        item_custom_field = ItemCustomField.query.filter_by(database=database, item=item, field_name=field_name).first()
+                        if not item_custom_field:
+                            item_custom_field = ItemCustomField(field_name=field_name, field_value=additional_field_edit_value, item=item, database=database)
+                            db.session.add(item_custom_field)
+                        else:
+                            item_custom_field.field_value = additional_field_edit_value
+                        db.session.commit()
+                return redirect(request.headers.get('Referer', '/'))
+            return redirect(request.headers.get('Referer', '/'))
+        
+#----------------------------------------------------------------
+
+class add_bom_items(Resource):
+    @jwt_required()
+    def post(self):
+        current_user = get_jwt_identity()
+        data = request.get_json()
+        user = User.query.filter_by(id=current_user['userid']).first()
+        if user.role != 'MASTERS':
+            return {'message':'method not allowed'} , 401
+        else:
+            database = Data.query.filter_by(id=current_user["data"]).first()
+            parent_item_id = data.get("chart_id")
+            add_items_check = data.get("add_items_check")
+
+            if add_items_check and parent_item_id:
+                parent_item = Item.query.filter_by(id=parent_item_id, database=database).first()
+                bom_name = data.get("bom_name")
+                if bom_name:
+                    item_boms = parent_item.boms
+                    if not len(item_boms):
+                        item_bom = ItemBOM(database=database, item=parent_item, bom_name=bom_name)
+                        db.session.add(item_bom)
+                    else:
+                        item_boms[0].bom_name = bom_name
+                    db.session.commit()
+
+                item_parent_tree = [parent_item]
+                search_space = [parent_item]
+                while search_space:
+                    item = search_space.pop(0)
+                    parent_items_bom = BOM.query.filter_by(database=database, child_item=item).all()
+                    for parent_item_bom in parent_items_bom:
+                        if parent_item_bom.parent_item.id == parent_item.id:
+                            db.session.delete(parent_item_bom)
+                        item_parent_tree.append(parent_item_bom.parent_item)
+                        search_space.append(parent_item_bom.parent_item)
+
+                bom_items = parent_item.parent_boms
+                id_list = data.get("items_ids[]",[])
+                qty_list = data.get("items_qtys[]",[])
+                unit_list = data.get("item_units[]",[])
+                margin_list = data.get("item_margins[]",[])
+
+                if len(id_list) == len(qty_list) == len(unit_list) == len(margin_list):
+                    for bom_item in bom_items:
+                        db.session.delete(bom_item)
+
+                    for i in range(len(id_list)):
+                        child_item = Item.query.filter_by(database=database, id=id_list[i]).first()
+                        if child_item in item_parent_tree:
+                            flash(f"Cannot add {child_item.name}. It exists in the BOM chain!", "danger")
+                            continue
+                        unit = unit_list[i]
+                        conversion_factor = get_conversion_factor(database, child_item, unit)
+                        qty = float(qty_list[i]) / conversion_factor
+                        margin = margin_list[i]
+                        bom_map = BOM(database=database, parent_item=parent_item, child_item=child_item, child_item_qty=qty, margin=margin)
+                        db.session.add(bom_map)
+                    db.session.commit()
+                    flash("Successfully Added BOM!", "success")
+                else:
+                    flash("Invalid Request FOR BOM!", "danger")
+                return redirect(request.headers.get('Referer', '/'))
+            return redirect(request.headers.get('Referer', '/'))
+        
+#----------------------------------------------------------------
+
+class delete_unit(Resource):
+    @jwt_required()
+    def post(self):
+        current_user = get_jwt_identity()
+        data = request.get_json()
+        user = User.query.filter_by(id=current_user['userid']).first()
+        if user.role != 'MASTERS':
+            return {'message':'method not allowed'} , 401
+        else:
+            database = Data.query.filter_by(id=current_user["data"]).first()
+            delete_unit_id = data.get("delete_unit_id")
+            if delete_unit_id:
+                unit_mapping = ItemUnit.query.filter_by(database=database, id=delete_unit_id).first()
+                db.session.delete(unit_mapping)
+                db.session.commit()
+                flash("Deleted Unit!", "success")
+                return redirect(request.headers.get('Referer', '/'))
+            return redirect(request.headers.get('Referer', '/'))
+        
+#----------------------------------------------------------------
+

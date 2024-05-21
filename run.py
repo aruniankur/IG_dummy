@@ -8,7 +8,8 @@ import os
 app = Flask(__name__, template_folder='templates')
 #app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:1234@localhost:5432/dummy'
 #app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:1234@localhost:5432/intaligendb2'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://intaligen:RlTBS2h3UfRDYtcoqRPJgklcwvXm3yuM@dpg-cp2fgm8l6cac73de0ra0-a.oregon-postgres.render.com/intaligen_dummy2'
+#app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://intaligen:RlTBS2h3UfRDYtcoqRPJgklcwvXm3yuM@dpg-cp2fgm8l6cac73de0ra0-a.oregon-postgres.render.com/intaligen_dummy2'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://intaligen2dummy_user:pb9897lDoJOHzvZTvZfzDTMkw17Wi0Oy@dpg-cp686fg21fec738d8vqg-a.oregon-postgres.render.com/intaligen2dummy'
 #app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 db.init_app(app)
 register_routes(app, db)
