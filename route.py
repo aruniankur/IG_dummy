@@ -71,7 +71,7 @@ def register_routes(app,db):
                         verification_url = 'https://ig-dummy.onrender.com'+'/verify_email/' + verification_token
                         email_body = f"Click the link below to verify your email:\n{verification_url}"
                         #print(email_body)
-                        hashed_password = generate_password_hash(password1, method='sha256')
+                        hashed_password = generate_password_hash(password1+email.lower(), method='pbkdf2:sha256')
                         #print(hashed_password)
                         #return {'message': 'User registered successfully. Check your email for verification'}, 200
                         if sendmail(email, email_body):
