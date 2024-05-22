@@ -9,6 +9,7 @@ from flask_paginate import Pagination, get_page_parameter
 from sqlalchemy import and_, exists
 import pandas as pd
 from fuzzywuzzy import fuzz
+
 #from Production.background_tasks.background_tasks import my_background_task, itemMasterUpload
 from celery.result import AsyncResult
 from celery import Celery
@@ -73,8 +74,7 @@ class itemsinfo(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-        user = User.query.filter_by(id=current_user['userid']).first()
-        if user.role != 'MASTERS':
+        if current_user["role"] != 'ADMIN':
             return {'message':'method not allowed'} , 401
         else:
             database = Data.query.filter_by(id=current_user["data"]).first()
@@ -129,11 +129,15 @@ class itemsinfo(Resource):
             additional_fields_dict = {field.field_name: field.field_value for field in additional_fields}
 
             segment = get_segment(request,current_user["data"])
-            return render_template("items/item_info_new.html", ITEM=ITEM, categories=CATEGORIES, items=ITEMS, BOM_DATA=BOM_DATA,
-                                CHART_BOM_DATA=CHART_BOM_DATA, raw_bool=raw_bool, anti_raw_bool=anti_raw_bool,
-                                item_categories=ITEM_CATEGORIES, units=ITEM_UNITS, item_master_config=json.loads(data_config.item_master_config),
-                                additional_fields_dict=additional_fields_dict, segment=segment)           
-
+            # return render_template("items/item_info_new.html", ITEM=ITEM, categories=CATEGORIES, items=ITEMS, BOM_DATA=BOM_DATA,
+            #                     CHART_BOM_DATA=CHART_BOM_DATA, raw_bool=raw_bool, anti_raw_bool=anti_raw_bool,
+            #                     item_categories=ITEM_CATEGORIES, units=ITEM_UNITS, item_master_config=json.loads(data_config.item_master_config),
+            #                     additional_fields_dict=additional_fields_dict, segment=segment)           
+            response = {'ITEM':createjson(ITEM), 'categories':CATEGORIES, 'items':ITEMS, 'BOM_DATA':createjson(BOM_DATA),
+                                'CHART_BOM_DATA':CHART_BOM_DATA, 'raw_bool':raw_bool, 'anti_raw_bool':anti_raw_bool,
+                                'item_categories':createjson(ITEM_CATEGORIES), 'units':createjson(ITEM_UNITS), 'item_master_config':json.loads(data_config.item_master_config),
+                                'additional_fields_dict':additional_fields_dict, 'segment':segment}
+        return response, 200
 #----------------------------------------------------------------
 
 class add_bom_item(Resource):
@@ -141,8 +145,7 @@ class add_bom_item(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-        user = User.query.filter_by(id=current_user['userid']).first()
-        if user.role != 'MASTERS':
+        if current_user["role"] != 'ADMIN':
             return {'message':'method not allowed'} , 401
         else:
             database = Data.query.filter_by(id=current_user["data"]).first()
@@ -158,8 +161,8 @@ class add_bom_item(Resource):
                             child_item_unit=child_item.unit, database=database, margin=margin)
                 db.session.add(bom_data)
                 db.session.commit()
-                return redirect(f"/itemsinfo?item_id={parent_item_id}", code=302)
-            return redirect(request.headers.get("Referer"))
+                return {'message':'bom added successfully', 'item_id': parent_item_id}, 200
+            return {'message':'check input'}, 401
         
 #----------------------------------------------------------------      
 
@@ -168,8 +171,7 @@ class edit_bom_item(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-        user = User.query.filter_by(id=current_user['userid']).first()
-        if user.role != 'MASTERS':
+        if current_user["role"] != 'ADMIN':
             return {'message':'method not allowed'} , 401
         else:
             edit_bom_id = data.get("edit_bom_id")
@@ -181,8 +183,8 @@ class edit_bom_item(Resource):
                 edit_bom.child_item_qty = float(edit_bom_qty)
                 edit_bom.margin = float(edit_bom_margin)
                 db.session.commit()
-                return redirect(f"/itemsinfo?item_id={edit_bom.parent_item_id}", code=302)
-            return redirect(request.headers.get("Referer"))
+                return {'message':'bom edited successfully', 'item_id':edit_bom.parent_item_id}, 200
+            return {'message':'check input'}, 401
         
 #----------------------------------------------------------------
 
@@ -191,8 +193,7 @@ class delete_bom_item(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-        user = User.query.filter_by(id=current_user['userid']).first()
-        if user.role != 'MASTERS':
+        if current_user["role"] != 'ADMIN':
             return {'message':'method not allowed'} , 401
         else:
             delete_bom_id = data.get("bom_delete_id")
@@ -200,8 +201,8 @@ class delete_bom_item(Resource):
                 delete_bom = BOM.query.filter_by(id=delete_bom_id).first()
                 db.session.delete(delete_bom)
                 db.session.commit()
-                return redirect(f"/itemsinfo?item_id={delete_bom.parent_item_id}", code=302)
-            return redirect(request.headers.get("Referer"))
+                return {'message':'bom deleted successfully', 'item_id':delete_bom.parent_item_id}, 200
+            return {'message':'check input'}, 401
         
 #----------------------------------------------------------------
 
@@ -210,8 +211,7 @@ class add_category_to_item(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-        user = User.query.filter_by(id=current_user['userid']).first()
-        if user.role != 'MASTERS':
+        if current_user["role"] != 'ADMIN':
             return {'message':'method not allowed'} , 401
         else:
             database = Data.query.filter_by(id=current_user["data"]).first()
@@ -223,14 +223,13 @@ class add_category_to_item(Resource):
                 category = Category.query.filter_by(database=database, id=add_category_id).first()
                 item_cat = ItemCategory.query.filter_by(database=database, item=item, category=category).first()
                 if item_cat:
-                    flash("Category already present in the item", "danger")
-                    return redirect(f"/itemsinfo?item_id={item.id}", code=302)
+                    return {'message': 'Category already present in the item', 'item_id':item.id}, 401
                 item_category = ItemCategory(database=database, item=item, category=category)
                 db.session.add(item_category)
                 db.session.commit()
-                flash("Added Category!", "success")
-                return redirect(f"/itemsinfo?item_id={item.id}", code=302)
-            return redirect(request.headers.get("Referer"))
+                return {'message': 'Category added successfully' , 'item_id':item.id}, 200
+            return {'message':'check input'}, 401
+        
         
 #----------------------------------------------------------------
 
@@ -239,8 +238,7 @@ class delete_category_from_item(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-        user = User.query.filter_by(id=current_user['userid']).first()
-        if user.role != 'MASTERS':
+        if current_user["role"] != 'ADMIN':
             return {'message':'method not allowed'} , 401
         else:
             database = Data.query.filter_by(id=current_user["data"]).first()
@@ -253,9 +251,8 @@ class delete_category_from_item(Resource):
                 item_category = ItemCategory.query.filter_by(database=database, item=item, category=category).first()
                 db.session.delete(item_category)
                 db.session.commit()
-                flash("Category Removed", "danger")
-                return redirect(f"/itemsinfo?item_id={item.id}", code=302)
-            return redirect(request.headers.get("Referer"))
+                return {'message': 'Category deleted successfully' , 'item_id':item.id}, 200
+            return {'message':'check input'}, 401
         
 #----------------------------------------------------------------
 
@@ -264,8 +261,7 @@ class edit_inventory_levels(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-        user = User.query.filter_by(id=current_user['userid']).first()
-        if user.role != 'MASTERS':
+        if current_user["role"] != 'ADMIN':
             return {'message':'method not allowed'} , 401
         else:
             database = Data.query.filter_by(id=current_user["data"]).first()
@@ -282,8 +278,8 @@ class edit_inventory_levels(Resource):
                     item_inv.min_level = min_level
                     item_inv.max_level = max_level
                     db.session.commit()
-                return redirect(request.headers.get('Referer', '/'))
-            return redirect(request.headers.get('Referer', '/'))
+                return {'message': 'inventory edited successfully'}, 200
+            return {'message':'check input'}, 401
         
 #----------------------------------------------------------------
 
@@ -292,8 +288,7 @@ class edit_finance_info(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-        user = User.query.filter_by(id=current_user['userid']).first()
-        if user.role != 'MASTERS':
+        if current_user["role"] != 'ADMIN':
             return {'message':'method not allowed'} , 401
         else:
             database = Data.query.filter_by(id=current_user["data"]).first()
@@ -312,8 +307,8 @@ class edit_finance_info(Resource):
                     item_fin.sale_price = sale_price
                     item_fin.tax = tax
                     db.session.commit()
-                return redirect(request.headers.get('Referer', '/'))
-            return redirect(request.headers.get('Referer', '/'))
+                return {'message': 'finance edited successfully'}, 200
+            return {'message':'check input'}, 401
         
 #-------------------------------------------------------------
 
@@ -322,8 +317,7 @@ class edit_additional_fields(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-        user = User.query.filter_by(id=current_user['userid']).first()
-        if user.role != 'MASTERS':
+        if current_user["role"] != 'ADMIN':
             return {'message':'method not allowed'} , 401
         else:
             database = Data.query.filter_by(id=session["data"]).first()
@@ -351,8 +345,8 @@ class edit_additional_fields(Resource):
                         else:
                             item_custom_field.field_value = additional_field_edit_value
                         db.session.commit()
-                return redirect(request.headers.get('Referer', '/'))
-            return redirect(request.headers.get('Referer', '/'))
+                return {'message': 'additional edited successfully'}, 200
+            return {'message':'check input'}, 401
         
 #----------------------------------------------------------------
 
@@ -361,8 +355,7 @@ class add_bom_items(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-        user = User.query.filter_by(id=current_user['userid']).first()
-        if user.role != 'MASTERS':
+        if current_user["role"] != 'ADMIN':
             return {'message':'method not allowed'} , 401
         else:
             database = Data.query.filter_by(id=current_user["data"]).first()
@@ -414,11 +407,10 @@ class add_bom_items(Resource):
                         bom_map = BOM(database=database, parent_item=parent_item, child_item=child_item, child_item_qty=qty, margin=margin)
                         db.session.add(bom_map)
                     db.session.commit()
-                    flash("Successfully Added BOM!", "success")
+                    return {'message': 'Successfully Added BOM!'}, 200
                 else:
-                    flash("Invalid Request FOR BOM!", "danger")
-                return redirect(request.headers.get('Referer', '/'))
-            return redirect(request.headers.get('Referer', '/'))
+                    return {'message': 'Invalid Request FOR BOM!'}, 401
+            return {'message':'check input'}, 401
         
 #----------------------------------------------------------------
 
@@ -427,8 +419,7 @@ class delete_unit(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-        user = User.query.filter_by(id=current_user['userid']).first()
-        if user.role != 'MASTERS':
+        if current_user["role"] != 'ADMIN':
             return {'message':'method not allowed'} , 401
         else:
             database = Data.query.filter_by(id=current_user["data"]).first()
@@ -438,7 +429,7 @@ class delete_unit(Resource):
                 db.session.delete(unit_mapping)
                 db.session.commit()
                 flash("Deleted Unit!", "success")
-                return redirect(request.headers.get('Referer', '/'))
-            return redirect(request.headers.get('Referer', '/'))
+                return {'message': 'unit deleted'}, 200
+            return {'message':'check input'}, 401
         
 #----------------------------------------------------------------

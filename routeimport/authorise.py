@@ -22,7 +22,7 @@ class Login(Resource):
                     'user_id': user.id,
                     'name': user.name.upper(),
                     'data': user.data_id,
-                    'email': user.email
+                    'role': user.access_role.upper()
                 }
                 # Find or create workstation
                 print(user.database)

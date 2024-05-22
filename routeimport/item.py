@@ -1,6 +1,6 @@
 from flask import Flask,current_app, jsonify, render_template, request, redirect, session, send_from_directory, after_this_request, flash, Blueprint
 from flask_paginate import Pagination, get_page_args
-from models import Item, Category, ItemCategory, Labor, Data, BOM, Inventory, Unit, UnitMapping, ItemUnit, Joballot, Prodchart, Customer, Order, OrderItem, DataConfiguration, ItemCustomField, BGProcess, ItemFinance, ItemInventory, ItemBOM
+from models import User, Item, Category, ItemCategory, Labor, Data, BOM, Inventory, Unit, UnitMapping, ItemUnit, Joballot, Prodchart, Customer, Order, OrderItem, DataConfiguration, ItemCustomField, BGProcess, ItemFinance, ItemInventory, ItemBOM
 #from decorators import requires_role, get_segment, get_conversion_factor 
 from models import db
 from openpyxl import Workbook
@@ -65,6 +65,8 @@ class list_items(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
+        if current_user["role"] != 'ADMIN':
+            return {'message':'method not allowed'} , 401
         database = Data.query.filter_by(id=current_user["data"]).first()
         filters_list = data.get("filters", [])  # Correctly access the filters list
         filter_type = data.get('filter_type')
@@ -85,8 +87,8 @@ class list_items(Resource):
         items = items[start:end]
         units = Unit.query.filter_by(database=database).all()
         segment = get_segment(request,current_user["data"])
-        return render_template("items/items_new_ui.html", items=items, categories=CATEGORIES, filter_category_pairs=FILTER_CATEGORY_PAIRS, filter_type=filter_type, pagination=pagination, units=units, segment=segment)
-        
+        response = {'items':createjson(items), 'categories':CATEGORIES, 'filter_category_pairs':FILTER_CATEGORY_PAIRS, 'filter_type':filter_type, 'pagination':createjson(pagination), 'units':createjson(units), 'segment':segment}
+        return response , 200
 
 class add_item(Resource):
     @jwt_required()
@@ -95,6 +97,8 @@ class add_item(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
+        if current_user["role"] != 'ADMIN':
+            return {'message':'method not allowed'} , 401
         database = Data.query.filter_by(id=current_user["data"]).first()
         p_code = data.get("p_code")
         p_name = data.get("p_name")
@@ -121,13 +125,11 @@ class add_item(Resource):
                 db.session.add(item_finance)
                 db.session.commit()
                 if p_flag == "NO":
-                    return redirect(f"/itemsinfo?item_id={item1.id}")
-                flash("New Item Added!", "success")
-                return redirect("/items", code=302)
+                    return {'message': "iteminfo", 'itemid':item1.id}, 200
+                return {'message': "new item added"}, 302
             else:
-                flash("Item Name Already Exists!", "danger")
-                return render_template("items/newitem.html")
-        return render_template("items/newitem.html")
+                return {'message':'item already exists'}, 401
+        return {'message':'check input'}, 401
     
 class edit_items(Resource):
     @jwt_required()
@@ -136,6 +138,8 @@ class edit_items(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
+        if current_user["role"] != 'ADMIN':
+            return {'message':'method not allowed'} , 401
         database = Data.query.filter_by(id=current_user["data"]).first()
         edit_ids = data.get("edit_ids[]", [])        
         edit_codes = data.get("edit_codes[]", [])
@@ -205,17 +209,17 @@ class edit_items(Resource):
                         db.session.commit()
                     else:
                         res += f"Item {edit_name} Doesn't Exist!"
-            flash(res, "success")
-            return redirect(request.headers.get('Referer', '/'))
-        return redirect(request.headers.get('Referer', '/'))
+            return {"message": res}, 302
+        return {'message': 'no id found'}, 302
     
+#see this
 class search_items(Resource):
     @jwt_required()
-    def get(self):
-        return {'message': 'error in search string'}, 401
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
+        if current_user["role"] != 'ADMIN':
+            return {'message':'method not allowed'} , 401
         database = Data.query.filter_by(id=current_user["data"]).first()
         search_string = data.get("search_string")
         filters_list = data.get("filters[]", [])
@@ -260,7 +264,6 @@ class search_items(Resource):
             items = Item.query.filter_by(data_id=session['data']).all()
 
         return render_template("items/items_list.html", items=items)
-        return {'message': 'error in post search string'}, 401
     
 #----------------------------------------------------------------
 
