@@ -16,10 +16,8 @@ class Login(Resource):
                 user = User.query.filter_by(email=email).first()
                 if not user:
                     return {'message': 'Invalid username or password'}, 401
-                if not (check_password_hash(user.password, password) or password==user.password):
-                    return {'message': 'Invalid username-password',
-                            'pas':user.password,
-                            'pss': password}, 401
+                if not (check_password_hash(user.password, password+user.email.lower()) or password==user.password):
+                    return {'message': 'Invalid username-password'}, 401
                 ta_info = {
                     'user_id': user.id,
                     'name': user.name.upper(),

@@ -118,7 +118,7 @@ class change_password(Resource):
             user_id = current_user['user_id']
             user = User.query.filter_by(id=user_id).first()
             if user:
-                if check_password_hash(user.password, old_pass+user.email.lower()):
+                if (check_password_hash(user.password, old_pass+user.email.lower()) or old_pass == user.password):
                     hashed_password = generate_password_hash(new_pass+user.email.lower(), method='pbkdf2:sha256')
                     user.password = hashed_password
                     db.session.commit()

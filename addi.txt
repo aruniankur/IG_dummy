@@ -2,7 +2,7 @@ flask --app run.py --debug run
 
 deactivate
 source venv/bin/activate
-
+git push -u origin main
 
 ok so here is what to do if get stuck 
 

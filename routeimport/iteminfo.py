@@ -23,6 +23,15 @@ from flask_jwt_extended import JWTManager, create_access_token, jwt_required, ge
 import json
 import smtplib
 
+def get_conversion_factor(database, item, unit_name):
+    print(database.id, item.name, unit_name)
+    if item.unit == unit_name:
+        return 1
+    item_unit = ItemUnit.query.filter_by(database=database, item = item, unit_name = unit_name).first()
+    if item_unit:
+        return item_unit.conversion_factor
+    return 1
+
 def get_segment(request, id1):
     try:
         database = Data.query.filter_by(id=id1).first()
@@ -433,4 +442,3 @@ class delete_unit(Resource):
             return redirect(request.headers.get('Referer', '/'))
         
 #----------------------------------------------------------------
-
