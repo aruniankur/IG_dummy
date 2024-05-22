@@ -67,15 +67,9 @@ def register_routes(app,db):
                         res = str(uuid.uuid4())[:12]
                         verification_token = secrets.token_hex(32)
                         print(verification_token)
-                        # with app.test_request_context():
-                        #     verification_url = url_for("app.VerifyEmail", token=verification_token, _external=True)
-                        #     print(f'Generated verification URL: {verification_url}')
                         verification_url = 'https://ig-dummy.onrender.com'+'/verify_email/' + verification_token
                         email_body = f"Click the link below to verify your email:\n{verification_url}"
-                        #print(email_body)
                         hashed_password = generate_password_hash(password1+email.lower(), method='pbkdf2:sha256')
-                        #print(hashed_password)
-                        #return {'message': 'User registered successfully. Check your email for verification'}, 200
                         if sendmail(email, email_body):
                             user = User(name=name ,email=email, password=hashed_password, access_role="PENDING",token=verification_token, operation_role="ADMIN")
                             db.session.add(user)
@@ -164,7 +158,7 @@ def register_routes(app,db):
     api.add_resource(iteminfo.delete_bom_item, '/delete_bom_item')
     api.add_resource(iteminfo.add_category_to_item, '/add_category_to_item')
     api.add_resource(iteminfo.delete_category_from_item, '/delete_category_from_item')
-    api.add_resource(iteminfo.edit_additional_fields,'/edit_additional_fields')
+    api.add_resource(iteminfo.edit_additional_fields,'/edit_additional_fields') #--
     api.add_resource(iteminfo.edit_inventory_levels,'/edit_inventory_levels')
     api.add_resource(iteminfo.edit_finance_info,'/edit_finance_info')
     api.add_resource(iteminfo.add_bom_items,'/add_bom_items') #--

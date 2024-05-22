@@ -6,6 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity,set_access_cookies, unset_jwt_cookies
 from models import db
 from functools import wraps
+from routeimport.decorators import requires_role
 
 def outerdecorator(arg1, arg2):
     def my_decorator(f):
@@ -34,43 +35,53 @@ class Login(Resource):
                     return {'message': 'Invalid username or password'}, 401
                 if not (check_password_hash(user.password, password+user.email.lower()) or password==user.password):
                     return {'message': 'Invalid username-password'}, 401
+                if user.token and (len(user.token) == 32 or user.access_role == 'PENDING'):
+                    return {'message':'User found, email not verified',
+                            'name': user.name,
+                            'email': user.email }, 401
                 ta_info = {
                     'user_id': user.id,
                     'name': user.name.upper(),
-                    'email': user.email.upper(),
+                    'email': user.email,
                     'data': user.data_id,
                     'role': user.access_role.upper()
                 }
-                # Find or create workstation
                 print(user.database)
                 workstation = Workstation.query.filter_by(database=user.database, name=user.name+"_primary_ws").first()
                 if not workstation:
-                    # check this later
                     workstation = Workstation(primary_flag="YES", name=user.name+"_primary_ws", database=user.database)
                     db.session.add(workstation)
                     db.session.commit()
                 ta_info['workstation_id'] = workstation.id
-                # Create access token
                 access_token = create_access_token(identity=ta_info)
-                # Store access token in User model
                 user.token = access_token
                 db.session.commit()
-                # Set access token as cookie in the response
                 response = make_response(jsonify({'login': True, 'token': access_token}), 200)
                 set_access_cookies(response, access_token)
                 return response
             return {'message': 'Missing email or password'}, 400
         
         
+# class Protected(Resource):
+#     @jwt_required()
+#     @outerdecorator('aruni','ankur')
+#     def get(self , arg1):
+#         current_user = get_jwt_identity()
+#         #print(current_user)
+#         print(f'arg1 passed to get: {arg1}')
+#         return {'logged_in_as': current_user}, 200
+    
+
+#["VIEWER", "EDITOR"]
+#["INVENTORY", "PRODUCTION", "WORKSTATION", "ORDERS", "PURCHASE", "MRP", "MASTERS"]
+
 class Protected(Resource):
     @jwt_required()
-    @outerdecorator('aruni','ankur')
-    def get(self , arg1):
+    @requires_role(['MASTERS'],["VIEWER", "EDITOR"],['MASTERS'])
+    def get(self):
         current_user = get_jwt_identity()
         #print(current_user)
-        print(f'arg1 passed to get: {arg1}')
         return {'logged_in_as': current_user}, 200
-    
 
 class checkAuthentication(Resource):
     @jwt_required()
@@ -79,7 +90,6 @@ class checkAuthentication(Resource):
         try:
             if current_user:
                 user = User.query.filter_by(email=current_user['email']).first()
-                print(user.token)
                 if user.token:
                     return {"status" : "pass"}, 200
                 else:
@@ -111,7 +121,6 @@ class VerifyEmail(Resource):
         print(token1)
         user = User.query.filter_by(token=token1).first()
         if user:
-            # Update access_role to 'ACTIVE'
             user.access_role = 'BASIC'
             user.token = None  # Remove the token after verification
             db.session.commit()

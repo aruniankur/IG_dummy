@@ -1,7 +1,7 @@
 from flask import Flask,current_app, jsonify, render_template, request, redirect, session, send_from_directory, after_this_request, flash, Blueprint
 from flask_paginate import Pagination, get_page_args
 from models import User, Item, Category, ItemCategory, Labor, Data, BOM, Inventory, Unit, UnitMapping, ItemUnit, Joballot, Prodchart, Customer, Order, OrderItem, DataConfiguration, ItemCustomField, BGProcess, ItemFinance, ItemInventory, ItemBOM
-#from decorators import requires_role, get_segment, get_conversion_factor 
+
 from models import db
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
@@ -9,8 +9,6 @@ from flask_paginate import Pagination, get_page_parameter
 from sqlalchemy import and_, exists
 import pandas as pd
 from fuzzywuzzy import fuzz
-
-#from Production.background_tasks.background_tasks import my_background_task, itemMasterUpload
 from celery.result import AsyncResult
 from celery import Celery
 from celery import shared_task
@@ -23,6 +21,7 @@ from flask_restful import Api, Resource
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 import json
 import smtplib
+from routeimport.decorators import requires_role
 
 def get_conversion_factor(database, item, unit_name):
     print(database.id, item.name, unit_name)
@@ -43,6 +42,17 @@ def get_segment(request, id1):
         return segment+[database.company.name]
     except:
         return None
+    
+def compare_strings(s1, s2, code=""):
+    if s1 in code:
+        score=100
+    elif s1 in s2:
+        score=100
+    elif s2 in s1:
+        score=100
+    else:
+        score= fuzz.token_sort_ratio(s1, s2)
+    return score
 
 def createjson(dbt):
     def convert_to_dict(instance):
@@ -71,6 +81,7 @@ def createjson(dbt):
     
 class itemsinfo(Resource):
     @jwt_required()
+    @requires_role(['MASTERS'],["VIEWER", "EDITOR"],['MASTERS'])
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -128,11 +139,7 @@ class itemsinfo(Resource):
             additional_fields = ItemCustomField.query.filter_by(database=database, item=ITEM).all()
             additional_fields_dict = {field.field_name: field.field_value for field in additional_fields}
 
-            segment = get_segment(request,current_user["data"])
-            # return render_template("items/item_info_new.html", ITEM=ITEM, categories=CATEGORIES, items=ITEMS, BOM_DATA=BOM_DATA,
-            #                     CHART_BOM_DATA=CHART_BOM_DATA, raw_bool=raw_bool, anti_raw_bool=anti_raw_bool,
-            #                     item_categories=ITEM_CATEGORIES, units=ITEM_UNITS, item_master_config=json.loads(data_config.item_master_config),
-            #                     additional_fields_dict=additional_fields_dict, segment=segment)           
+            segment = get_segment(request,current_user["data"])     
             response = {'ITEM':createjson(ITEM), 'categories':CATEGORIES, 'items':ITEMS, 'BOM_DATA':createjson(BOM_DATA),
                                 'CHART_BOM_DATA':CHART_BOM_DATA, 'raw_bool':raw_bool, 'anti_raw_bool':anti_raw_bool,
                                 'item_categories':createjson(ITEM_CATEGORIES), 'units':createjson(ITEM_UNITS), 'item_master_config':json.loads(data_config.item_master_config),
@@ -142,6 +149,7 @@ class itemsinfo(Resource):
 
 class add_bom_item(Resource):
     @jwt_required()
+    @requires_role(['MASTERS'],["EDITOR"],['MASTERS'])
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -171,6 +179,7 @@ class add_bom_item(Resource):
 
 class edit_bom_item(Resource):
     @jwt_required()
+    @requires_role(['MASTERS'],["EDITOR"],['MASTERS'])
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -196,6 +205,7 @@ class edit_bom_item(Resource):
 
 class delete_bom_item(Resource):
     @jwt_required()
+    @requires_role(['MASTERS'],["EDITOR"],['MASTERS'])
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -217,6 +227,7 @@ class delete_bom_item(Resource):
 
 class add_category_to_item(Resource):
     @jwt_required()
+    @requires_role(['MASTERS'],["EDITOR"],['MASTERS'])
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -247,6 +258,7 @@ class add_category_to_item(Resource):
 
 class delete_category_from_item(Resource):
     @jwt_required()
+    @requires_role(['MASTERS'],["EDITOR"],['MASTERS'])
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -270,6 +282,7 @@ class delete_category_from_item(Resource):
 
 class edit_inventory_levels(Resource):
     @jwt_required()
+    @requires_role(['MASTERS'],["EDITOR"],['MASTERS'])
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -300,6 +313,7 @@ class edit_inventory_levels(Resource):
 
 class edit_finance_info(Resource):
     @jwt_required()
+    @requires_role(['MASTERS'],["EDITOR"],['MASTERS'])
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -329,6 +343,7 @@ class edit_finance_info(Resource):
 
 class edit_additional_fields(Resource):
     @jwt_required()
+    @requires_role(['MASTERS'],["EDITOR"],['MASTERS'])
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -367,6 +382,7 @@ class edit_additional_fields(Resource):
 
 class add_bom_items(Resource):
     @jwt_required()
+    @requires_role(['MASTERS'],["EDITOR"],['MASTERS'])
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -431,6 +447,7 @@ class add_bom_items(Resource):
 
 class delete_unit(Resource):
     @jwt_required()
+    @requires_role(['MASTERS'],["EDITOR"],['MASTERS'])
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -447,4 +464,132 @@ class delete_unit(Resource):
                 return {'message': 'unit deleted'}, 200
             return {'message':'check input'}, 401
         
+#----------------------------------------------------------------
+
+class search_item(Resource):
+    @jwt_required()
+    @requires_role(['BASIC'],["VIEWER","EDITOR"],['MASTERS'])
+    def post(self):
+        current_user = get_jwt_identity()
+        database= Data.query.filter_by(id = current_user["data"]).first()
+        print("item search request recvd ")
+        req_json= request.get_json()
+        k = int(req_json.get('k', 10))  # Default value is 10
+        item_name =req_json.get('name',None)
+        item_id = req_json.get('id',None)
+        filters = req_json.get('filters', None)
+        items=[]
+        print(filters)
+        if filters:
+            filters_list = filters["filters_array"]
+            filter_type = filters["filter_type"]
+            if filter_type == "inclusive":
+                items = db.session.query(Item).join(ItemCategory).filter(
+                    ItemCategory.category_id.in_(filters_list), Item.data_id == current_user["data"]).all()
+            else:
+                cat_count = len(filters_list)
+                items_filter = db.session.query(
+                    Item.id, db.func.count(ItemCategory.id).label("category_count")).join(
+                    Item, ItemCategory.item_id == Item.id).filter(
+                    Item.data_id == current_user["data"], ItemCategory.category_id.in_(filters_list)).group_by(
+                    Item.id).all()
+                filter_df =pd.DataFrame(items_filter, columns=["id", "cat_count"])
+                filter_df = filter_df[filter_df["cat_count"] == cat_count]
+                items = db.session.query(Item).filter(Item.id.in_(filter_df["id"]), Item.data_id == current_user["data"]).all()
+        if item_name:
+            print("item_name", item_name)
+            if not filters:
+                items = (Item.query.filter(Item.data_id == current_user["data"]).all())
+            item_scores = [(item, compare_strings(item_name.lower(), item.name.lower(), item.code.lower())) for item in items]
+            item_scores.sort(key=lambda x: x[1], reverse=True)
+            if k>0:
+                top_k_matches = item_scores[:k]
+            else:
+                top_k_matches = item_scores
+            items = [match[0] for match in top_k_matches]
+        if item_id:
+            items = Item.query.filter_by(id =item_id, data_id = current_user["data"]).all()
+        results = [
+            {   'id': item.id,'name': item.name,'unit': item.unit,'rate': item.rate,'code': item.code,'raw_flag': item.raw_flag,
+                'itemfinance': {'cost_price': item.itemfinance.cost_price,'sale_price': item.itemfinance.sale_price,'tax': item.itemfinance.tax,'hsn_code': item.itemfinance.hsn_code
+                } if item.itemfinance else None} for item in items]
+        return jsonify(results), 200
+        
+        
+#----------------------------------------------------------------
+
+class getunits(Resource):
+    @jwt_required()
+    @requires_role(['BASIC'],["VIEWER","EDITOR"],['MASTERS'])
+    def get(self):
+        current_user = get_jwt_identity()
+        database= Data.query.filter_by(id = current_user["data"]).first()
+        units = Unit.query.filter_by(database=database).all()
+        relations = UnitMapping.query.filter_by(database=database).all()
+        return {"units":createjson(units) ,"relations":createjson(relations)}, 200
+    
+class createunit(Resource):
+    @jwt_required()
+    @requires_role(['BASIC'],["EDITOR"],['MASTERS'])
+    def post(self):
+        current_user = get_jwt_identity()
+        database= Data.query.filter_by(id = current_user["data"]).first()
+        data = request.get_json()
+        unitName = data.get("unitName")
+        unitId = data.get("unitId")
+        if unitName:
+            unitName = unitName.upper()
+            unit_check = Unit.query.filter_by(database=database, name = unitName).first()
+            if unit_check:
+                return {"message": "Unit already exists"}, 302
+            if unitId:
+                unit_edit = Unit.query.filter_by(database=database, id = unitId).first()
+                unit_edit.name = unitName
+                db.session.commit()
+                return {"message": "Unit edited successfully"}, 302
+            new_unit = Unit(name=unitName, database=database)
+            db.session.add(new_unit)
+            db.session.commit()
+            return {"message": "Unit added successfully"}, 302
+        return {"message":"check input"}, 402
+        
+        
+class createconversion(Resource):
+    @jwt_required()
+    @requires_role(['BASIC'],["EDITOR"],['MASTERS'])
+    def post(self):
+        current_user = get_jwt_identity()
+        database= Data.query.filter_by(id = current_user["data"]).first()
+        data = request.get_json()
+        item_id = data.get('itemId')
+        to_unit_name = data.get('toUnit')
+        conversion_factor = data.get('conversionFactor')
+        to_unit_type = data.get('toUnitType')
+        if item_id and to_unit_name and conversion_factor and to_unit_type:
+            item = Item.query.filter_by(database=database, id= item_id).first()
+            item_unit = ItemUnit(database=database,item=item, unit_name = to_unit_name, conversion_factor=conversion_factor, unit_type = to_unit_type)
+            db.session.add(item_unit)
+            db.session.commit()
+            return {"message": "Unit relation modified successfully"}, 302
+        return {"message": "check input"}, 401
+
+
+class units_relation_api(Resource):
+    @jwt_required()
+    @requires_role(['BASIC'],["EDITOR"],['MASTERS'])
+    def post(self):
+        current_user = get_jwt_identity()
+        database= Data.query.filter_by(id = current_user["data"]).first()
+        data = request.get_json()
+        item_ids = data.get('item_ids[]',[])
+        response_data = {}
+        for item_id in item_ids:
+            item = Item.query.filter_by(database=database, id=item_id).first()
+            item_units = ItemUnit.query.filter_by(database=database, item=item).all()
+            response_data[item_id] = {}
+            for item_unit in item_units:
+                response_data[item_id][item_unit.unit_name] = item_unit.conversion_factor
+            response_data[item_id][item.unit] = 1
+        return jsonify(response_data), 200
+    
 #----------------------------------------------------------------

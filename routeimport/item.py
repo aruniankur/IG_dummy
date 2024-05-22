@@ -22,6 +22,7 @@ from flask_restful import Api, Resource
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 import json
 import smtplib
+from routeimport.decorators import requires_role
 
 def get_segment(request, id1):
     try:
@@ -62,6 +63,7 @@ def createjson(dbt):
 
 class list_items(Resource):
     @jwt_required()
+    @requires_role(['MASTERS'],["VIEWER", "EDITOR"],['MASTERS'])
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -92,6 +94,7 @@ class list_items(Resource):
 
 class add_item(Resource):
     @jwt_required()
+    @requires_role(['MASTERS'],["EDITOR"],['MASTERS'])
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -130,6 +133,7 @@ class add_item(Resource):
         return {'message':'check input'}, 401
     
 class edit_items(Resource):
+    @requires_role(['MASTERS'],["EDITOR"],['MASTERS'])
     @jwt_required()
     def post(self):
         current_user = get_jwt_identity()
@@ -211,6 +215,7 @@ class edit_items(Resource):
 #see this
 class search_items(Resource):
     @jwt_required()
+    @requires_role(['MASTERS'],["VIEWER", "EDITOR"],['MASTERS'])
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
