@@ -167,5 +167,5 @@ def register_routes(app,db):
     api.add_resource(iteminfo.edit_additional_fields,'/edit_additional_fields')
     api.add_resource(iteminfo.edit_inventory_levels,'/edit_inventory_levels')
     api.add_resource(iteminfo.edit_finance_info,'/edit_finance_info')
-    api.add_resource(iteminfo.add_bom_items,'/add_bom_items')
-    api.add_resource(iteminfo.delete_units,'/delete_units')
+    api.add_resource(iteminfo.add_bom_items,'/add_bom_items') #--
+    api.add_resource(iteminfo.delete_unit,'/delete_unit')

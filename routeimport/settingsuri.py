@@ -168,7 +168,7 @@ class Updatememberaccess(Resource):
                     member_dict["access"][page_name] = access_level
                 member.operation_role = json.dumps(member_dict)
                 db.session.commit()
-                return {'message': 'member update successful'}, 200
+                return {'message': 'member access update successful'}, 200
             else:
                 {'message': 'Invalid request, check input'}, 400
         else:

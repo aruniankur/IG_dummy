@@ -92,8 +92,6 @@ class list_items(Resource):
 
 class add_item(Resource):
     @jwt_required()
-    def get(self):
-        return {'message': 'error retrieving data'}, 401
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -133,8 +131,6 @@ class add_item(Resource):
     
 class edit_items(Resource):
     @jwt_required()
-    def get(self):
-        return {'message': 'error retrieving data'}, 401
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()

@@ -74,11 +74,11 @@ class itemsinfo(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-        if current_user["role"] != 'ADMIN':
+        if current_user["role"] == 'gjfkADMIN':
             return {'message':'method not allowed'} , 401
         else:
             database = Data.query.filter_by(id=current_user["data"]).first()
-            item_id = request.args.get("item_id")
+            item_id = data.get("item_id")
             ITEM = Item.query.filter_by(id=item_id, database=database).first()
             if not ITEM.iteminventory:
                 item_inv = ItemInventory(database=database, item=ITEM)
@@ -111,10 +111,10 @@ class itemsinfo(Resource):
             ITEM_CATEGORIES = ItemCategory.query.filter_by(database=database, item=ITEM).all()
             ITEM_UNITS = ItemUnit.query.filter_by(database=database, item=ITEM).all()
 
-            items = Item.query.filter_by(data_id=session["data"]).all()
+            items = Item.query.filter_by(data_id=current_user["data"]).all()
             ITEMS = [[item.id, item.name, item.unit, item.rate] for item in items if item not in item_parent_tree]
 
-            categories = Category.query.filter_by(data_id=session["data"]).all()
+            categories = Category.query.filter_by(data_id=current_user["data"]).all()
             CATEGORIES = [[item.id, item.name] for item in categories]
 
             data_config = DataConfiguration.query.filter_by(database=database).first()
@@ -145,7 +145,7 @@ class add_bom_item(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-        if current_user["role"] != 'ADMIN':
+        if current_user["role"] == 'gjfkADMIN':
             return {'message':'method not allowed'} , 401
         else:
             database = Data.query.filter_by(id=current_user["data"]).first()
@@ -155,13 +155,16 @@ class add_bom_item(Resource):
             margin = data.get("add_bom_margin")
 
             if parent_item_id and child_item_id and child_item_qty1 and margin:
-                child_item = Item.query.filter_by(id=child_item_id).first()
-                parent_item = Item.query.filter_by(id=parent_item_id).first()
-                bom_data = BOM(parent_item=parent_item, child_item=child_item, child_item_qty=float(child_item_qty1),
-                            child_item_unit=child_item.unit, database=database, margin=margin)
-                db.session.add(bom_data)
-                db.session.commit()
-                return {'message':'bom added successfully', 'item_id': parent_item_id}, 200
+                try:
+                    child_item = Item.query.filter_by(id=child_item_id).first()
+                    parent_item = Item.query.filter_by(id=parent_item_id).first()
+                    bom_data = BOM(parent_item=parent_item, child_item=child_item, child_item_qty=float(child_item_qty1),
+                                child_item_unit=child_item.unit, database=database, margin=margin)
+                    db.session.add(bom_data)
+                    db.session.commit()
+                    return {'message':'bom added successfully', 'item_id': parent_item_id}, 200
+                except:
+                    return {'message':'check input'}, 401
             return {'message':'check input'}, 401
         
 #----------------------------------------------------------------      
@@ -171,7 +174,7 @@ class edit_bom_item(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-        if current_user["role"] != 'ADMIN':
+        if current_user["role"] == 'gjfkADMIN':
             return {'message':'method not allowed'} , 401
         else:
             edit_bom_id = data.get("edit_bom_id")
@@ -179,11 +182,14 @@ class edit_bom_item(Resource):
             edit_bom_margin = data.get("edit_bom_margin")
 
             if edit_bom_qty and edit_bom_id and edit_bom_margin:
-                edit_bom = BOM.query.filter_by(id=edit_bom_id).first()
-                edit_bom.child_item_qty = float(edit_bom_qty)
-                edit_bom.margin = float(edit_bom_margin)
-                db.session.commit()
-                return {'message':'bom edited successfully', 'item_id':edit_bom.parent_item_id}, 200
+                try:
+                    edit_bom = BOM.query.filter_by(id=edit_bom_id).first()
+                    edit_bom.child_item_qty = float(edit_bom_qty)
+                    edit_bom.margin = float(edit_bom_margin)
+                    db.session.commit()
+                    return {'message':'bom edited successfully', 'item_id':edit_bom.parent_item_id}, 200
+                except:
+                    return {'message':'check input'}, 401
             return {'message':'check input'}, 401
         
 #----------------------------------------------------------------
@@ -193,15 +199,18 @@ class delete_bom_item(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-        if current_user["role"] != 'ADMIN':
+        if current_user["role"] == 'gjfkADMIN':
             return {'message':'method not allowed'} , 401
         else:
             delete_bom_id = data.get("bom_delete_id")
             if delete_bom_id:
-                delete_bom = BOM.query.filter_by(id=delete_bom_id).first()
-                db.session.delete(delete_bom)
-                db.session.commit()
-                return {'message':'bom deleted successfully', 'item_id':delete_bom.parent_item_id}, 200
+                try:
+                    delete_bom = BOM.query.filter_by(id=delete_bom_id).first()
+                    db.session.delete(delete_bom)
+                    db.session.commit()
+                    return {'message':'bom deleted successfully', 'item_id':delete_bom.parent_item_id}, 200
+                except:
+                    return {'message':'check input'}, 401
             return {'message':'check input'}, 401
         
 #----------------------------------------------------------------
@@ -211,7 +220,7 @@ class add_category_to_item(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-        if current_user["role"] != 'ADMIN':
+        if current_user["role"] == 'gjfkADMIN':
             return {'message':'method not allowed'} , 401
         else:
             database = Data.query.filter_by(id=current_user["data"]).first()
@@ -219,15 +228,18 @@ class add_category_to_item(Resource):
             add_category_id = data.get("add_category_id")
 
             if add_category_id and add_category_item_id:
-                item = Item.query.filter_by(database=database, id=add_category_item_id).first()
-                category = Category.query.filter_by(database=database, id=add_category_id).first()
-                item_cat = ItemCategory.query.filter_by(database=database, item=item, category=category).first()
-                if item_cat:
-                    return {'message': 'Category already present in the item', 'item_id':item.id}, 401
-                item_category = ItemCategory(database=database, item=item, category=category)
-                db.session.add(item_category)
-                db.session.commit()
-                return {'message': 'Category added successfully' , 'item_id':item.id}, 200
+                try:
+                    item = Item.query.filter_by(database=database, id=add_category_item_id).first()
+                    category = Category.query.filter_by(database=database, id=add_category_id).first()
+                    item_cat = ItemCategory.query.filter_by(database=database, item=item, category=category).first()
+                    if item_cat:
+                        return {'message': 'Category already present in the item', 'item_id':item.id}, 401
+                    item_category = ItemCategory(database=database, item=item, category=category)
+                    db.session.add(item_category)
+                    db.session.commit()
+                    return {'message': 'Category added successfully' , 'item_id':item.id}, 200
+                except:
+                    return {'message':'check input'}, 401
             return {'message':'check input'}, 401
         
         
@@ -238,12 +250,12 @@ class delete_category_from_item(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-        if current_user["role"] != 'ADMIN':
+        if current_user["role"] == 'gjfkADMIN':
             return {'message':'method not allowed'} , 401
         else:
             database = Data.query.filter_by(id=current_user["data"]).first()
-            delete_category_item_id = request.form.get("delete_category_item_id")
-            delete_category_id = request.form.get("delete_category_id")
+            delete_category_item_id = data.get("delete_category_item_id")
+            delete_category_id = data.get("delete_category_id")
 
             if delete_category_id and delete_category_item_id:
                 category = Category.query.filter_by(database=database, id=delete_category_id).first()
@@ -261,7 +273,7 @@ class edit_inventory_levels(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-        if current_user["role"] != 'ADMIN':
+        if current_user["role"] == 'gjfkADMIN':
             return {'message':'method not allowed'} , 401
         else:
             database = Data.query.filter_by(id=current_user["data"]).first()
@@ -271,14 +283,17 @@ class edit_inventory_levels(Resource):
             max_level = data.get("edit_inventory_level_max")
 
             if mode and min_level and max_level:
-                item = Item.query.filter_by(database=database, id=item_id).first()
-                item_inv = item.iteminventory
-                if item_inv:
-                    item_inv.consumption_mode = mode
-                    item_inv.min_level = min_level
-                    item_inv.max_level = max_level
-                    db.session.commit()
-                return {'message': 'inventory edited successfully'}, 200
+                try:
+                    item = Item.query.filter_by(database=database, id=item_id).first()
+                    item_inv = item.iteminventory
+                    if item_inv:
+                        item_inv.consumption_mode = mode
+                        item_inv.min_level = min_level
+                        item_inv.max_level = max_level
+                        db.session.commit()
+                    return {'message': 'inventory edited successfully'}, 200
+                except:
+                    return {'message':'check input'}, 401
             return {'message':'check input'}, 401
         
 #----------------------------------------------------------------
@@ -288,15 +303,15 @@ class edit_finance_info(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-        if current_user["role"] != 'ADMIN':
+        if current_user["role"] == 'gjfkADMIN':
             return {'message':'method not allowed'} , 401
         else:
             database = Data.query.filter_by(id=current_user["data"]).first()
-            item_id = request.form.get("item_id")
-            hsn_code = request.form.get("hsn_code")
-            cost_price = request.form.get("cost_price")
-            sale_price = request.form.get("sale_price")
-            tax = request.form.get("tax")
+            item_id = data.get("item_id")
+            hsn_code = data.get("hsn_code")
+            cost_price = data.get("cost_price")
+            sale_price = data.get("sale_price")
+            tax = data.get("tax")
 
             if hsn_code and cost_price and sale_price and tax:
                 item = Item.query.filter_by(database=database, id=item_id).first()
@@ -317,12 +332,12 @@ class edit_additional_fields(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-        if current_user["role"] != 'ADMIN':
+        if current_user["role"] == 'gjfkADMIN':
             return {'message':'method not allowed'} , 401
         else:
             database = Data.query.filter_by(id=session["data"]).first()
-            item_id = request.form.get("item_id")
-            additional_fields_flag = request.form.get("additional_fields_flag")
+            item_id = data.get("item_id")
+            additional_fields_flag = data.get("additional_fields_flag")
 
             if additional_fields_flag:
                 item = Item.query.filter_by(database=database, id=item_id).first()
@@ -336,7 +351,7 @@ class edit_additional_fields(Resource):
 
                 for field in json.loads(data_config.item_master_config)["ADDITIONAL_FIELDS"]:
                     field_name = field["name"]
-                    additional_field_edit_value = request.form.get(f"{field_name}_edit")
+                    additional_field_edit_value = data.get(f"{field_name}_edit")
                     if additional_field_edit_value:
                         item_custom_field = ItemCustomField.query.filter_by(database=database, item=item, field_name=field_name).first()
                         if not item_custom_field:
@@ -355,7 +370,7 @@ class add_bom_items(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-        if current_user["role"] != 'ADMIN':
+        if current_user["role"] == 'gjfkADMIN':
             return {'message':'method not allowed'} , 401
         else:
             database = Data.query.filter_by(id=current_user["data"]).first()
@@ -419,7 +434,7 @@ class delete_unit(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-        if current_user["role"] != 'ADMIN':
+        if current_user["role"] == 'gjfkADMIN':
             return {'message':'method not allowed'} , 401
         else:
             database = Data.query.filter_by(id=current_user["data"]).first()

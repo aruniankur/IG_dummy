@@ -169,3 +169,136 @@ input : {
     'subscription_id': ,
     'company_name':
 }
+
+api 19:
+https://ig-dummy.onrender.com/ListItems
+
+jwt_required
+post 
+input : {
+    "filters": [],
+    "filter_type":""
+}
+
+api 20:
+https://ig-dummy.onrender.com/AddItem
+jwt_required
+input : {
+    "p_code":"22223",
+"p_name":"aruni item 1",
+"p_rate":23,
+"p_unit":"dz",
+"p_flag":"YES",
+"pf_cost_price":12,
+"pf_sale_price":21,
+"pf_tax":111,
+"pf_hsn":""}
+
+api 21:
+https://ig-dummy.onrender.com/edit_items
+jwt_required
+input : {"edit_ids[]": [],
+"edit_codes[]": [],
+"edit_names[]": [],
+"edit_rates[]": [],
+"edit_units[]": [],
+"edit_hsn_codes[]": [],
+"edit_cost_prices[]": [],
+"edit_sale_prices[]": [],
+"edit_taxes[]": [],
+"edit_bom_flags[]": [],
+"edit_min_levels[]": [],
+"edit_max_levels[]": []}
+
+api 22:
+https://ig-dummy.onrender.com/ItemsInfo
+jwt_required
+
+input : {
+    "item_id":3
+}
+
+api 23:
+https://ig-dummy.onrender.com/add_bom_item
+jwt_required
+
+post 
+input :
+{
+    "parent_item_id":1,
+    "child_item_id":1,
+    "child_item_qty":21,
+    "add_bom_margin":3
+}
+
+api 24:
+https://ig-dummy.onrender.com/edit_bom_item
+jwt_required
+post : 
+input : {
+    "edit_bom_id":1,
+"edit_bom_quant":12,
+"edit_bom_margin":11,
+}
+
+api 25:
+https://ig-dummy.onrender.com/delete_bom_item
+jwt_required
+post:
+input : {
+    "bom_delete_id":1
+}
+
+api 26:
+https://ig-dummy.onrender.com/add_category_to_item
+jwt_required
+post :
+{
+    "add_category_item_id":,
+"add_category_id":
+}
+
+api 27:
+https://ig-dummy.onrender.com/delete_category_from_item
+jwt_required
+post :
+{
+    "delete_category_item_id":,
+"delete_category_id":
+}
+api 28:
+https://ig-dummy.onrender.com/edit_additional_fields
+jwt_required
+post:
+
+
+api 29:
+https://ig-dummy.onrender.com/edit_inventory_levels
+jwt_required
+post:
+{
+"consumption_mode":,
+"edit_inventory_level_min":,
+"edit_inventory_level_max":
+}
+api 30:
+https://ig-dummy.onrender.com/edit_finance_info
+jwt_required
+post:
+{
+"item_id":,
+"hsn_code":,
+"cost_price":,
+"sale_price":,
+"tax":
+}
+
+api 31:
+https://ig-dummy.onrender.com/delete_unit
+jwt_required
+post:
+input:
+{
+    "delete_unit_id" : ,
+}
+

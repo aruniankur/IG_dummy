@@ -5,6 +5,22 @@ from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity,set_access_cookies, unset_jwt_cookies
 from models import db
+from functools import wraps
+
+def outerdecorator(arg1, arg2):
+    def my_decorator(f):
+        @wraps(f)  # Preserve metadata from the original function
+        def wrapper(*args, **kwargs):
+            current_user = get_jwt_identity()
+            print(current_user, arg1, arg2)
+            print("Before calling the function")
+            kwargs['arg1'] = arg1
+            result = f(*args, **kwargs)
+            print("After calling the function")
+            return result
+        return wrapper
+    return my_decorator
+
 
 class Login(Resource):
         def post(self):
@@ -21,6 +37,7 @@ class Login(Resource):
                 ta_info = {
                     'user_id': user.id,
                     'name': user.name.upper(),
+                    'email': user.email.upper(),
                     'data': user.data_id,
                     'role': user.access_role.upper()
                 }
@@ -44,11 +61,14 @@ class Login(Resource):
                 return response
             return {'message': 'Missing email or password'}, 400
         
+        
 class Protected(Resource):
     @jwt_required()
-    def get(self):
+    @outerdecorator('aruni','ankur')
+    def get(self , arg1):
         current_user = get_jwt_identity()
-        print(current_user)
+        #print(current_user)
+        print(f'arg1 passed to get: {arg1}')
         return {'logged_in_as': current_user}, 200
     
 
