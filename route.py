@@ -14,6 +14,8 @@ import smtplib
 from routeimport import dashboard
 from routeimport import settingsuri
 from routeimport import authorise
+from routeimport import item
+from routeimport import iteminfo
 
 def register_routes(app,db):
     app.config['JWT_SECRET_KEY'] = 'YL8ck4TG1@cJvGfY#e5USH93@xCGu9'
@@ -150,3 +152,20 @@ def register_routes(app,db):
     api.add_resource(settingsuri.generatekey, '/generatekey')
     api.add_resource(settingsuri.DeleteUser, '/DeleteUser')
     api.add_resource(settingsuri.Updatememberaccess, '/Updatememberaccess')
+    #----------------------------------------------------------------
+    api.add_resource(item.list_items, '/ListItems')
+    api.add_resource(item.add_item, '/AddItem')
+    api.add_resource(item.edit_items, '/edit_items')
+    api.add_resource(item.search_items, '/search_items')
+    #----------------------------------------------------------------
+    api.add_resource(iteminfo.itemsinfo, '/ItemsInfo')
+    api.add_resource(iteminfo.add_bom_item, '/add_bom_item')
+    api.add_resource(iteminfo.edit_bom_item, '/edit_bom_item')
+    api.add_resource(iteminfo.delete_bom_item, '/delete_bom_item')
+    api.add_resource(iteminfo.add_category_to_item, '/add_category_to_item')
+    api.add_resource(iteminfo.delete_category_from_item, '/delete_category_from_item')
+    api.add_resource(iteminfo.edit_additional_fields,'/edit_additional_fields')
+    api.add_resource(iteminfo.edit_inventory_levels,'/edit_inventory_levels')
+    api.add_resource(iteminfo.edit_finance_info,'/edit_finance_info')
+    api.add_resource(iteminfo.add_bom_items,'/add_bom_items')
+    api.add_resource(iteminfo.delete_units,'/delete_units')
