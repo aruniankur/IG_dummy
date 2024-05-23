@@ -302,3 +302,37 @@ input:
     "delete_unit_id" : ,
 }
 
+
+api 32:
+https://ig-dummy.onrender.com/get_units
+jwt_required
+get:
+output:
+{"units":createjson(units) ,"relations":createjson(relations)}
+
+api 33:
+https://ig-dummy.onrender.com/create_unit
+jwt_required
+post:
+{
+    "unitName":,
+    "unitId":
+}
+api 34:
+https://ig-dummy.onrender.com/createconversion
+jwt_required
+post:
+{
+    "itemId":,
+    "toUnit":,
+    "conversionFactor":,
+    "toUnitType":
+}
+
+api 35:
+https://ig-dummy.onrender.com/units_relationapi
+jwt_required
+post:
+{
+    "item_ids":[]
+}

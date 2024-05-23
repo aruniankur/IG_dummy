@@ -163,3 +163,9 @@ def register_routes(app,db):
     api.add_resource(iteminfo.edit_finance_info,'/edit_finance_info')
     api.add_resource(iteminfo.add_bom_items,'/add_bom_items') #--
     api.add_resource(iteminfo.delete_unit,'/delete_unit')
+    api.add_resource(iteminfo.getunits,'/get_units')
+    api.add_resource(iteminfo.createunit,'/create_unit')
+    api.add_resource(iteminfo.createconversion,'/createconversion')
+    api.add_resource(iteminfo.units_relation_api,'/units_relationapi')
+    
+    
