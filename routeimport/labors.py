@@ -4,7 +4,7 @@ from celery import shared_task
 import pandas as pd
 from flask import request
 from models import db, Data, Category
-from datetime import datetime, date
+import datetime
 from flask_restful import Resource
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from routeimport.decorators import requires_role
@@ -54,7 +54,7 @@ class labors(Resource):
         try:
             labors = Labor.query.filter_by(data_id=current_user['data']).all()
             segment = get_segment(request, current_user['data'])
-            return {"labors": createjson(labors), "segment": createjson(segment)}, 200
+            return {"labors": createjson(labors), "segment": segment}, 200
         except:
             return {"message":"try again"}, 401
 
