@@ -1,5 +1,5 @@
 from flask import request
-from models import Data, Category
+from models import db, Data, Category
 from datetime import datetime, date
 from flask_restful import Resource
 from flask_jwt_extended import jwt_required, get_jwt_identity

@@ -17,7 +17,7 @@ from routeimport import authorise
 from routeimport import item
 from routeimport import iteminfo
 from routeimport import categories
-
+from routeimport import labors
 def register_routes(app,db):
     app.config['JWT_SECRET_KEY'] = 'YL8ck4TG1@cJvGfY#e5USH93@xCGu9'
     app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=15)
@@ -166,3 +166,10 @@ def register_routes(app,db):
     api.add_resource(categories.catogory,'/catogory')
     api.add_resource(categories.Addcategory,'/add_category')
     api.add_resource(categories.editcategory,'/edit_catogory')
+    #------------------------------------------------------------------
+    api.add_resource(labors.labors,'/labors')
+    api.add_resource(labors.addlabor,'/addlabor')
+    api.add_resource(labors.editlabor,'/editlabor')
+    api.add_resource(labors.searchlabor,'/labors/search')
+    #------------------------------------------------------------------
+    
