@@ -199,7 +199,7 @@ class edit_items(Resource):
                             item2.iteminventory.min_level = edit_min_level
                             item2.iteminventory.max_level = edit_max_level
                         db.session.commit()
-                        res += f"Item {edit_name} Exist!"
+                        res += f"Item {edit_name} Changed!"
                     else:
                         res += f"Item {edit_name} Doesn't Exist!"
             return {"message": res}, 302
