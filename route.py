@@ -16,6 +16,7 @@ from routeimport import settingsuri
 from routeimport import authorise
 from routeimport import item
 from routeimport import iteminfo
+from routeimport import categories
 
 def register_routes(app,db):
     app.config['JWT_SECRET_KEY'] = 'YL8ck4TG1@cJvGfY#e5USH93@xCGu9'
@@ -162,5 +163,6 @@ def register_routes(app,db):
     api.add_resource(iteminfo.createconversion,'/createconversion')
     api.add_resource(iteminfo.units_relation_api,'/units_relationapi')
     #------------------------------------------------------------------
-    
-    
+    api.add_resource(categories.catogory,'/catogory')
+    api.add_resource(categories.Addcategory,'/add_category')
+    api.add_resource(categories.editcategory,'/edit_catogory')

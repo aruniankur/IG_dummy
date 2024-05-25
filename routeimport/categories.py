@@ -1,12 +1,8 @@
-from flask import Flask, render_template, request, redirect, session, send_from_directory, after_this_request, flash, Blueprint
-from Production.models import Data, Category
-from Production.decorators import requires_role, get_segment
-from Production.app import db
-import random
-import string
+from flask import request
+from models import Data, Category
 from datetime import datetime, date
 from flask_restful import Resource
-from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from routeimport.decorators import requires_role
 
 def get_segment(request, id1):
