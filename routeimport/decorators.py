@@ -3,6 +3,9 @@ from models import User, UserDataMapping
 import json
 from flask_jwt_extended import get_jwt_identity
 
+
+#need to change this, only acces_role and level should be there
+
 def requires_role(access_roles, level, page):
     def decorator(f):
         @wraps(f)

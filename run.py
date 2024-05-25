@@ -29,13 +29,13 @@ app.config.from_prefixed_env()
 celery_init_app(app)
 #this is the local data
 
-#app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:1234@localhost:5432/intaligendb2'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:1234@localhost:5432/intaligendb2'
 
 #this the public data
 
 #app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://intaligen2dummy_user:pb9897lDoJOHzvZTvZfzDTMkw17Wi0Oy@dpg-cp686fg21fec738d8vqg-a.oregon-postgres.render.com/intaligen2dummy'
 #app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:Intaligen1234@intaligen-dev-db.cp2ww2yimaft.ap-south-1.rds.amazonaws.com:5432/postgres'
+#app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:Intaligen1234@intaligen-dev-db.cp2ww2yimaft.ap-south-1.rds.amazonaws.com:5432/postgres'
 
 db.init_app(app)
 register_routes(app, db)
