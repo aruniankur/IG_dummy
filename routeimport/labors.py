@@ -64,7 +64,7 @@ class addlabor(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-        l_name = data.get("l_name");
+        l_name = data.get("l_name")
         l_salary = data.get("l_salary")
         l_code = data.get("l_code")
         l_type = data.get("l_type")
