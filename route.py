@@ -121,12 +121,6 @@ def register_routes(app,db):
                     db.session.commit()
             return jsonify({'message': 'Company Created Sucessfully'}), 302
     
-    
-    # class UserDashboard(Resource):
-    #     @jwt_required()
-    #     def get(self):
-    #     # Implement logic to fetch user dashboard data
-    #     def post(self):
             
     api.add_resource(Index, '/')
     api.add_resource(authorise.Login, '/login')
@@ -167,5 +161,6 @@ def register_routes(app,db):
     api.add_resource(iteminfo.createunit,'/create_unit')
     api.add_resource(iteminfo.createconversion,'/createconversion')
     api.add_resource(iteminfo.units_relation_api,'/units_relationapi')
+    #------------------------------------------------------------------
     
     

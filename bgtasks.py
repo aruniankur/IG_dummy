@@ -2,8 +2,7 @@ from celery import shared_task
 from time import sleep
 from run import app
 import pandas as pd
-from models import db, User, Data, Workstation,Labor,ItemCustomField,ItemFinance,ItemFinance,ItemCategory,Category,Customer, ZohoInfo, UserDataMapping, Subscription, SubDataMapping, Company, DataConfiguration, Item, BOM
-from openpyxl import Workbook
+from models import db, User, Data,ItemUnit,ItemInventory, Workstation,Labor,ItemCustomField,ItemFinance,ItemFinance,ItemCategory,Category,Customer, ZohoInfo, UserDataMapping, Subscription, SubDataMapping, Company, DataConfiguration, Item, BOM
 import openpyxl
 import json
 
@@ -254,3 +253,105 @@ def resourceMasterUpload(database_id, file_path):
     return res_string
 
 
+@shared_task(ignore_result=False)
+def itemCopyData(database_id, checkboxes, from_item_id, to_item_ids):
+    database = Data.query.filter_by(id = database_id).first()
+    res = "Copied on "
+    from_item = Item.query.filter_by(database=database, id=from_item_id).first()
+    bom_items = BOM.query.filter_by(database=database, parent_item = from_item).all()
+    item_categories = ItemCategory.query.filter_by(database=database, item=from_item).all()
+    item_units = ItemUnit.query.filter_by(database=database, item=from_item).all()
+    item_finances = ItemFinance.query.filter_by(database=database, item=from_item).first()
+    print(to_item_ids)
+    if int(from_item_id) in to_item_ids:
+        to_item_ids.remove(int(from_item_id))
+    for item_id in to_item_ids:
+        to_item = Item.query.filter_by(database=database, id=item_id).first()
+        if "PRIMARY UNIT" in checkboxes:
+            to_item.unit = from_item.unit
+            db.session.commit()
+        if "JOB RATE" in checkboxes:
+            to_item.rate = from_item.rate
+            db.session.commit()
+        if "BOM_FLAG" in checkboxes:
+            to_item.raw_flag = from_item.raw_flag
+            db.session.commit()
+        if "BOM" in checkboxes:
+            item_parent_tree=[to_item]
+            search_space = [to_item]
+            while len(search_space) > 0:
+                item = search_space[0]
+                search_space.remove(item)
+                parent_items_bom = BOM.query.filter_by(database=database, child_item=item).all()
+                for parent_item_bom in parent_items_bom:
+                    if parent_item_bom.parent_item.id == to_item.id:
+                        db.session.delete(parent_item_bom)
+                    item_parent_tree.append(parent_item_bom.parent_item)
+                    search_space.append(parent_item_bom.parent_item)
+            # to_item.raw_flag = "NO"
+            to_item_bom = BOM.query.filter_by(database=database, parent_item=to_item).all()
+            for to_item_bom_i in to_item_bom:
+                db.session.delete(to_item_bom_i) 
+            for bom_item in bom_items:
+                if bom_item.child_item in item_parent_tree:
+                    # res+= ""
+                    continue
+                to_bom_item = BOM(parent_item=to_item, child_item=bom_item.child_item, child_item_qty=bom_item.child_item_qty, child_item_unit=bom_item.child_item_unit, 
+                    database=database)
+                db.session.add(to_bom_item)
+                db.session.commit()
+        if "UNIT RELATIONS" in checkboxes:
+            to_unit_relations = ItemUnit.query.filter_by(database=database, item=to_item).all()
+            for relation in item_units:
+                to_unit_relation = ItemUnit(database=database, item=to_item, unit_name=relation.unit_name, conversion_factor=relation.conversion_factor,
+                    unit_type = relation.unit_type)
+                db.session.add(to_unit_relation)
+                db.session.commit()
+            for to_unit_relations_i in to_unit_relations:
+                db.session.delete(to_unit_relations_i) 
+        if "CATEGORIES" in checkboxes:
+            to_unit_categories= ItemCategory.query.filter_by(database=database, item=to_item).all()
+            for item_category in item_categories:
+                to_item_category = ItemCategory(database=database, item=to_item, category = item_category.category)
+                db.session.add(to_item_category)
+                db.session.commit()
+            for to_unit_categories_i in to_unit_categories:
+                db.session.delete(to_unit_categories_i) 
+        if "INVENTORY" in checkboxes:
+            to_item_inventory = to_item.iteminventory
+            if not to_item_inventory:
+                item_inv = ItemInventory(database=database, item=to_item)
+                db.session.add(item_inv)
+                db.session.commit()
+                to_item_inventory = item_inv
+            from_item_inventory = from_item.iteminventory
+            if not from_item_inventory:
+                item_inv = ItemInventory(database=database, item=from_item)
+                db.session.add(item_inv)
+                db.session.commit()
+                from_item_inventory = item_inv
+            to_item_inventory.consumption_mode = from_item_inventory.consumption_mode
+            to_item_inventory.min_level = from_item_inventory.min_level
+            to_item_inventory.max_level = from_item_inventory.max_level
+            db.session.commit()
+        if "FINANCE" in checkboxes:
+            to_item_finance = to_item.itemfinance
+            if not to_item_finance:
+                item_fin = ItemFinance(database=database, item=to_item)
+                db.session.add(item_fin)
+                db.session.commit()
+                to_item_finance = item_fin
+            from_item_finance = from_item.itemfinance
+            if not from_item_finance:
+                item_fin = ItemFinance(database=database, item=from_item)
+                db.session.add(item_fin)
+                db.session.commit()
+                from_item_finance = item_fin
+            to_item_finance.hsn_code = from_item_finance.hsn_code
+            to_item_finance.sale_price = from_item_finance.sale_price
+            to_item_finance.cost_price = from_item_finance.cost_price
+            to_item_finance.tax = from_item_finance.tax
+            db.session.commit()
+        res+= f"{to_item.name},"
+    res+= ". Copied Successfully"
+    return res

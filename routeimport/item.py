@@ -5,10 +5,8 @@ from models import User, Item, Category, ItemCategory, Labor, Data, BOM, Invento
 from models import db
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
-from flask_paginate import Pagination, get_page_parameter
 from sqlalchemy import and_, exists
 import pandas as pd
-from fuzzywuzzy import fuzz
 #from Production.background_tasks.background_tasks import my_background_task, itemMasterUpload
 from celery.result import AsyncResult
 from celery import Celery
@@ -67,8 +65,6 @@ class list_items(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-        if current_user["role"] != 'ADMIN':
-            return {'message':'method not allowed'} , 401
         database = Data.query.filter_by(id=current_user["data"]).first()
         filters_list = data.get("filters", [])  # Correctly access the filters list
         filter_type = data.get('filter_type')
@@ -98,8 +94,6 @@ class add_item(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-        if current_user["role"] != 'ADMIN':
-            return {'message':'method not allowed'} , 401
         database = Data.query.filter_by(id=current_user["data"]).first()
         p_code = data.get("p_code")
         p_name = data.get("p_name")
@@ -138,8 +132,6 @@ class edit_items(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-        if current_user["role"] != 'ADMIN':
-            return {'message':'method not allowed'} , 401
         database = Data.query.filter_by(id=current_user["data"]).first()
         edit_ids = data.get("edit_ids[]", [])        
         edit_codes = data.get("edit_codes[]", [])
@@ -219,8 +211,6 @@ class search_items(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-        if current_user["role"] != 'ADMIN':
-            return {'message':'method not allowed'} , 401
         database = Data.query.filter_by(id=current_user["data"]).first()
         search_string = data.get("search_string")
         filters_list = data.get("filters[]", [])

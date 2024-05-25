@@ -1,4 +1,6 @@
 flask --app run.py --debug run
+celery -A bgtasks.celery_app worker --loglevel INFO
+
 
 deactivate
 source venv/bin/activate
