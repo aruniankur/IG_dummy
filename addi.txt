@@ -2,6 +2,8 @@ flask --app run.py --debug run
 celery -A bgtasks.celery_app worker --loglevel INFO
 
 
+gunicorn -b 0.0.0.0:8000 run:app
+
 deactivate
 source venv/bin/activate
 git push -u origin main
