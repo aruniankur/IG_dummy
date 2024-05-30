@@ -183,8 +183,8 @@ class ordervalidation(Resource):
         current_user = get_jwt_identity()
         data = request.get_json()
         database = Data.query.filter_by(id = current_user["data"]).first()
-        order_id = request.args.get("order_id")
-        approval = request.args.get("approval")
+        order_id = data.get("order_id")
+        approval = data.get("approval")
         if order_id and approval:
             order = Order.query.filter_by(database=database, id = order_id).first()
             if approval == "ACTIVE":

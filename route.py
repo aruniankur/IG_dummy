@@ -173,3 +173,7 @@ def register_routes(app,db):
     api.add_resource(labors.searchlabor,'/labors/search')
     #------------------------------------------------------------------
     
+    api.add_resource(item.TaskStatusResource, '/status/<task_id>')
+    api.add_resource(item.ItemListResource, '/items')
+    
+    #----------------------------------------------------------------

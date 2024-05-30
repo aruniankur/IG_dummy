@@ -21,6 +21,7 @@ from flask_jwt_extended import JWTManager, create_access_token, jwt_required, ge
 import json
 import smtplib
 from routeimport.decorators import requires_role
+from bgtasks import long_running_task, long_running_task2
 
 def get_segment(request, id1):
     try:
@@ -259,3 +260,31 @@ class search_items(Resource):
     
 #----------------------------------------------------------------
 
+class ItemListResource(Resource):
+    def get(self):
+        print("Getting ready")
+        result = long_running_task.delay(10)
+        resul2 = long_running_task2.delay(3)
+        return {"message": "this is the lis", "result": result.id, "result1":resul2.id}, 200
+    
+#----------------------------------------------------------------
+
+class TaskStatusResource(Resource):
+    def get(self, task_id):
+        task_result = AsyncResult(task_id)
+        if task_result.state == 'PENDING':
+            response = {
+                'state': task_result.state,
+                'status': 'Pending...'
+            }
+        elif task_result.state != 'FAILURE':
+            response = {
+                'state': task_result.state,
+                'result': task_result.result
+            }
+        else:
+            response = {
+                'state': task_result.state,
+                'status': str(task_result.info),  # This is the exception raised
+            }
+        return jsonify(response)
