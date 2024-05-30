@@ -1,6 +1,6 @@
 from celery import shared_task 
 from time import sleep
-from run import app
+from config import app
 import pandas as pd
 from models import db, User, Data,ItemUnit,ItemInventory, Workstation,Labor,ItemCustomField,ItemFinance,ItemFinance,ItemCategory,Category,Customer, ZohoInfo, UserDataMapping, Subscription, SubDataMapping, Company, DataConfiguration, Item, BOM
 import openpyxl

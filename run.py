@@ -2,6 +2,8 @@ from flask_migrate import Migrate
 from route import register_routes 
 from models import db
 from config import app
+
+
 #this is the local data
 
 #app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:1234@localhost:5432/intaligendb2'

@@ -1,7 +1,3 @@
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-from route import register_routes 
-from models import db
 from celery import Celery, Task
 from flask import Flask
 
