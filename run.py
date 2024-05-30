@@ -20,9 +20,10 @@ def celery_init_app(app: Flask) -> Celery:
 
 app.config.from_mapping(
         CELERY=dict(
-            broker_url="redis://localhost",
-            result_backend="redis://localhost",
+            broker_url="rediss://red-cpaknacf7o1s73ai68og:JZshvN5SXUfCQL4D5i3AJIBM0RSKhWxy@singapore-redis.render.com:6379/0?ssl_cert_reqs=CERT_NONE",
+            result_backend="rediss://red-cpaknacf7o1s73ai68og:JZshvN5SXUfCQL4D5i3AJIBM0RSKhWxy@singapore-redis.render.com:6379/0?ssl_cert_reqs=CERT_NONE",
             task_ignore_result=True,
+            broker_connection_retry_on_startup=True,
         ),
     )
 app.config.from_prefixed_env()
