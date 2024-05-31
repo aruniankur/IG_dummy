@@ -21,3 +21,11 @@ flask db upgrade
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:1234@localhost:5432/dummy'
                                                     //username:password@locahost:port/dbname
+
+
+
+chmod 0400 intaligenpem.pem
+
+sudo yum update && sudo yum install python3-pip
+
+ssh -i intaligenpem.pem ec2-user@13.232.138.184

@@ -9,29 +9,8 @@ import smtplib
 from models import db
 import datetime
 from sqlalchemy.orm import class_mapper
-    
-def createjson(dbt):
-    def convert_to_dict(instance):
-        if instance is None:
-            return {}
-        result = {}
-        for key, value in instance.__dict__.items():
-            if key.startswith('_'):
-                continue
-            if isinstance(value, (datetime.date, datetime.datetime)):
-                result[key] = value.isoformat()
-            elif isinstance(value, list):
-                result[key] = [convert_to_dict(item) if hasattr(item, '__dict__') else item for item in value]
-            elif hasattr(value, '__dict__'):  # Check if value is a SQLAlchemy model instance
-                result[key] = convert_to_dict(value)
-            else:
-                result[key] = value
-        return result
-    
-    if isinstance(dbt, list):
-        return [convert_to_dict(item) for item in dbt]
-    else:
-        return convert_to_dict(dbt)
+from routeimport.decorators import requires_role, get_segment, createjson
+
 
 #----------------------------------------------------------------
 def sendmail(mail, text):

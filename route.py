@@ -171,9 +171,12 @@ def register_routes(app,db):
     api.add_resource(labors.addlabor,'/addlabor')
     api.add_resource(labors.editlabor,'/editlabor')
     api.add_resource(labors.searchlabor,'/labors/search')
+    api.add_resource(labors.NewLaborResource, '/labors/newlabor')
+    #/newlabor?download=YES
     #------------------------------------------------------------------
     
     api.add_resource(item.TaskStatusResource, '/status/<task_id>')
     api.add_resource(item.ItemListResource, '/items')
     
     #----------------------------------------------------------------
+    

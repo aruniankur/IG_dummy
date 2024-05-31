@@ -10,7 +10,7 @@ import datetime
 from routeimport.decorators import requires_role
 from flask import Flask,current_app, jsonify, render_template, request, redirect, session, send_from_directory, after_this_request, flash, Blueprint
 import datetime
-
+from routeimport.decorators import requires_role, get_segment, createjson
 
 
 
@@ -232,53 +232,22 @@ class get_demand_breakup(Resource):
         if item_id:
             item = Item.query.filter_by(database=database, id=item_id).first()
             orders = pd.DataFrame(
-                db.session.query(
-                    Order.id,
-                    Customer.name,
-                    Order.regdate,
-                    Order.despdate,
-                    Order.status,
-                    Order.note,
-                    Order.order_type,
-                    # Order.data_id,
+                db.session.query(Order.id,Customer.name,Order.regdate,Order.despdate,Order.status,Order.note,Order.order_type,
                     ).join(Customer, Order.customer_id == Customer.id).filter(Order.data_id == database.id, Order.order_type==0).all(),
-                columns = ["order_id","customer_name","regdate","despdate","status","note","order_type"]
-                )
+                columns = ["order_id","customer_name","regdate","despdate","status","note","order_type"])
             order_items = pd.DataFrame(
-                db.session.query(
-                    OrderItem.id,
-                    OrderItem.order_id,
-                    OrderItem.item_id,
-                    OrderItem.item_unit,
-                    OrderItem.order_qty,
-                    OrderItem.dispatch_qty,
-                    # OrderItem.data_id,
-                    OrderItem.inventory_ledger_id
+                db.session.query(OrderItem.id,OrderItem.order_id,OrderItem.item_id,OrderItem.item_unit,OrderItem.order_qty,OrderItem.dispatch_qty,OrderItem.inventory_ledger_id
                     ).filter(OrderItem.data_id == database.id).all(),
-                columns = ["order_item_id","order_id","item_id","item_unit","order_qty","dispatch_qty","inventory_ledger_id"]
-                )
+                columns = ["order_item_id","order_id","item_id","item_unit","order_qty","dispatch_qty","inventory_ledger_id"])
 
             boms = pd.DataFrame(
-                db.session.query(
-                    BOM.id,
-                    BOM.parent_item_id,
-                    BOM.child_item_id,
-                    BOM.child_item_qty,
-                    BOM.child_item_unit,
-                    BOM.margin,
-                    # BOM.data_id,
+                db.session.query(BOM.id,BOM.parent_item_id,BOM.child_item_id,BOM.child_item_qty,BOM.child_item_unit,BOM.margin,
                     ).filter(BOM.data_id == database.id).all(),
-                columns = ["bom_id","parent_item_id","child_item_id","child_item_qty","child_item_unit","margin"]
-                )
+                columns = ["bom_id","parent_item_id","child_item_id","child_item_qty","child_item_unit","margin"])
             items = pd.DataFrame(
-                db.session.query(
-                    Item.id,
-                    Item.name,
-                    Item.unit,
-                    # Item.data_id,
+                db.session.query(Item.id,Item.name,Item.unit,
                     ).filter(Item.data_id == database.id).all(),
-                columns = ["item_id","name","unit"]
-                )
+                columns = ["item_id","name","unit"])
             order_items_df = pd.merge(order_items, orders,left_on='order_id', right_on='order_id', how='inner')
             order_items_df = order_items_df[order_items_df['status'] == 'Active']
             order_items_df = pd.merge(order_items_df, items, left_on = 'item_id', right_on='item_id', how='inner')
@@ -297,5 +266,7 @@ class get_demand_breakup(Resource):
                 work_df.drop("parent_item_id_2", axis=1)
                 work_df["parent_item_id_2"] = work_df["parent_item_id"]
         return jsonify(result), 200
+    
+    
     
     

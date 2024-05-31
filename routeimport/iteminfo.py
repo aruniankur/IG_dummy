@@ -9,18 +9,13 @@ from sqlalchemy import and_, exists
 import pandas as pd
 from fuzzywuzzy import fuzz
 from celery.result import AsyncResult
-from celery import Celery
-from celery import shared_task
-import requests
 from sqlalchemy import func
-import datetime
 from sqlalchemy.orm import class_mapper
 import secrets
 from flask_restful import Api, Resource
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 import json
-import smtplib
-from routeimport.decorators import requires_role
+from routeimport.decorators import requires_role, get_segment, createjson
 
 def get_conversion_factor(database, item, unit_name):
     print(database.id, item.name, unit_name)
@@ -30,17 +25,6 @@ def get_conversion_factor(database, item, unit_name):
     if item_unit:
         return item_unit.conversion_factor
     return 1
-
-def get_segment(request, id1):
-    try:
-        database = Data.query.filter_by(id=id1).first()
-        segment = request.path.split('/')
-        if segment == '':
-            segment = 'index'
-        print(database.company.name)
-        return segment+[database.company.name]
-    except:
-        return None
     
 def compare_strings(s1, s2, code=""):
     if s1 in code:
@@ -53,28 +37,6 @@ def compare_strings(s1, s2, code=""):
         score= fuzz.token_sort_ratio(s1, s2)
     return score
 
-def createjson(dbt):
-    def convert_to_dict(instance):
-        if instance is None:
-            return {}
-        result = {}
-        for key, value in instance.__dict__.items():
-            if key.startswith('_'):
-                continue
-            if isinstance(value, (datetime.date, datetime.datetime)):
-                result[key] = value.isoformat()
-            elif isinstance(value, list):
-                result[key] = [convert_to_dict(item) if hasattr(item, '__dict__') else item for item in value]
-            elif hasattr(value, '__dict__'):  # Check if value is a SQLAlchemy model instance
-                result[key] = convert_to_dict(value)
-            else:
-                result[key] = value
-        return result
-    
-    if isinstance(dbt, list):
-        return [convert_to_dict(item) for item in dbt]
-    else:
-        return convert_to_dict(dbt)
     
 #----------------------------------------------------------------
     

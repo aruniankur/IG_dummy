@@ -1,47 +1,12 @@
 from flask import request
 from models import db, Data, Category
-import datetime
 from flask_restful import Resource
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from routeimport.decorators import requires_role
-
-def get_segment(request, id1):
-    try:
-        database = Data.query.filter_by(id=id1).first()
-        segment = request.path.split('/')
-        if segment == '':
-            segment = 'index'
-        print(database.company.name)
-        return segment+[database.company.name]
-    except:
-        return None
-    
-def createjson(dbt):
-    def convert_to_dict(instance):
-        if instance is None:
-            return {}
-        result = {}
-        for key, value in instance.__dict__.items():
-            if key.startswith('_'):
-                continue
-            if isinstance(value, (datetime.date, datetime.datetime)):
-                result[key] = value.isoformat()
-            elif isinstance(value, list):
-                result[key] = [convert_to_dict(item) if hasattr(item, '__dict__') else item for item in value]
-            elif hasattr(value, '__dict__'):  # Check if value is a SQLAlchemy model instance
-                result[key] = convert_to_dict(value)
-            else:
-                result[key] = value
-        return result
-    
-    if isinstance(dbt, list):
-        return [convert_to_dict(item) for item in dbt]
-    else:
-        return convert_to_dict(dbt)
+from routeimport.decorators import requires_role, get_segment, createjson
 
 class catogory(Resource):
     @jwt_required()
-    @requires_role(['MASTERS'],["VIEWER","EDITOR"],['MASTERS'])
+    @requires_role(['MASTERS'],0)
     def get(self):
         current_user = get_jwt_identity()
         try:
@@ -55,7 +20,7 @@ class catogory(Resource):
 
 class Addcategory(Resource):
     @jwt_required()
-    @requires_role(['MASTERS'],["EDITOR"],['MASTERS'])
+    @requires_role(['MASTERS'],1)
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -78,7 +43,7 @@ class Addcategory(Resource):
         
 class editcategory(Resource):
     @jwt_required()
-    @requires_role(['MASTERS'],["EDITOR"],['MASTERS'])
+    @requires_role(['MASTERS'],1)
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()

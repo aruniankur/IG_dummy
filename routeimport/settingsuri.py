@@ -8,32 +8,11 @@ import json
 from models import db
 import datetime
 from sqlalchemy.orm import class_mapper
-    
-def createjson(dbt):
-    def convert_to_dict(instance):
-        if instance is None:
-            return {}
-        result = {}
-        for key, value in instance.__dict__.items():
-            if key.startswith('_'):
-                continue
-            if isinstance(value, (datetime.date, datetime.datetime)):
-                result[key] = value.isoformat()
-            elif isinstance(value, list):
-                result[key] = [convert_to_dict(item) if hasattr(item, '__dict__') else item for item in value]
-            elif hasattr(value, '__dict__'):  # Check if value is a SQLAlchemy model instance
-                result[key] = convert_to_dict(value)
-            else:
-                result[key] = value
-        return result
-    
-    if isinstance(dbt, list):
-        return [convert_to_dict(item) for item in dbt]
-    else:
-        return convert_to_dict(dbt)
+from routeimport.decorators import requires_role, get_segment, createjson
 
 class Settings(Resource):
     @jwt_required()
+    @requires_role(["ADMIN"], 1)
     def get(self):
         current_user = get_jwt_identity()
         user_id = current_user['user_id']
@@ -78,6 +57,8 @@ class Settings(Resource):
         #print(createjson(database))
         response = {'user': createjson(user), 'members': createjson(members),'roles':ROLES,'zoho_info':createjson(zoho_info),'member_access':member_access, 'item_master_fields':json.loads(data_config.item_master_config),'segment':["settings"],  'database':createjson(database)}
         return response, 200
+    @jwt_required()
+    @requires_role(["ADMIN"], 1)
     def post(self):
         current_user = get_jwt_identity()
         user_id = current_user['user_id']
@@ -128,6 +109,7 @@ class generatekey(Resource):
             
 class DeleteUser(Resource):
     @jwt_required()
+    @requires_role(["ADMIN"], 1)
     def post(self):
         current_user = get_jwt_identity()
         user_id = current_user['user_id']
@@ -150,6 +132,7 @@ class DeleteUser(Resource):
 
 class Updatememberaccess(Resource):
     @jwt_required()
+    @requires_role(["ADMIN"], 1)
     def post(self):
         current_user = get_jwt_identity()
         user_id = current_user['user_id']

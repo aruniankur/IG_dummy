@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import request, jsonify, send_from_directory
 from models import Labor, Data, BGProcess
 from celery import shared_task
 import pandas as pd
@@ -7,48 +7,15 @@ from models import db, Data, Category
 import datetime
 from flask_restful import Resource
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from routeimport.decorators import requires_role
+from routeimport.decorators import requires_role, get_segment, createjson
+import os
+from bgtasks import resourceMasterUpload
+import xlsxwriter
 
-
-def get_segment(request, id1):
-    try:
-        database = Data.query.filter_by(id=id1).first()
-        segment = request.path.split('/')
-        if segment == '':
-            segment = 'index'
-        print(database.company.name)
-        return segment+[database.company.name]
-    except:
-        return None
-    
-def createjson(dbt):
-    def convert_to_dict(instance):
-        if instance is None:
-            return {}
-        result = {}
-        for key, value in instance.__dict__.items():
-            if key.startswith('_'):
-                continue
-            if isinstance(value, (datetime.date, datetime.datetime)):
-                result[key] = value.isoformat()
-            elif isinstance(value, list):
-                result[key] = [convert_to_dict(item) if hasattr(item, '__dict__') else item for item in value]
-            elif hasattr(value, '__dict__'):  # Check if value is a SQLAlchemy model instance
-                result[key] = convert_to_dict(value)
-            else:
-                result[key] = value
-        return result
-    
-    if isinstance(dbt, list):
-        return [convert_to_dict(item) for item in dbt]
-    else:
-        return convert_to_dict(dbt)
-    
-#----------------------------------------------------------------
 
 class labors(Resource):
     @jwt_required()
-    @requires_role(['MASTERS'],["VIEWER","EDITOR"],['MASTERS'])
+    @requires_role(['MASTERS'],0)
     def get(self):
         current_user = get_jwt_identity()
         try:
@@ -60,7 +27,7 @@ class labors(Resource):
 
 class addlabor(Resource):
     @jwt_required
-    @requires_role(['MASTERS'],["EDITOR"],['MASTERS'])
+    @requires_role(['MASTERS'],1)
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -84,7 +51,7 @@ class addlabor(Resource):
 
 class editlabor(Resource):
     @jwt_required
-    @requires_role(['MASTERS'],["EDITOR"],['MASTERS'])
+    @requires_role(['MASTERS'],1)
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -114,7 +81,7 @@ class editlabor(Resource):
         
 class searchlabor(Resource):
     @jwt_required
-    @requires_role(['MASTERS'],["VIEWER","EDITOR"],['MASTERS'])
+    @requires_role(['MASTERS'],0)
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -136,3 +103,55 @@ class searchlabor(Resource):
             results.append({'id': labor.id, 'name': labor.name, 'salary':labor.salary})
         print(results)
         return jsonify(results), 200
+    
+class NewLaborResource(Resource):
+    @jwt_required
+    @requires_role(["MASTERS"])
+    def get(self):
+        #/newlabor?download=YES
+        download_stat = request.args.get("download")
+        if download_stat == "YES":
+            direct = os.path.join(os.getcwd(), 'downloads')
+            list_files = os.listdir(direct)
+            for file in list_files:
+                path1 = os.path.join(direct, file)
+                os.remove(path1)
+            file_name = "labor_format" + ".xlsx"
+            direct2 = os.path.join(direct, file_name)
+            workbook = xlsxwriter.Workbook(direct2)
+            worksheet = workbook.add_worksheet()
+            worksheet.write(0, 0, "NAME")
+            worksheet.write(0, 1, "SALARY")
+            workbook.close()
+            return send_from_directory(directory=direct, path=file_name)
+
+        return {"message": "Invalid GET request"}, 400
+    @jwt_required
+    @requires_role(["MASTERS"])
+    def post(self):
+        current_user = get_jwt_identity()
+        if 'file' not in request.files:
+            return {"message": "No file part in the request"}, 400
+        f = request.files['file']
+        if f.filename == '':
+            return {"message": "No selected file"}, 400
+        try:
+            direct = os.path.join(os.getcwd(), 'uploads')
+            list_files = os.listdir(direct)
+            for file in list_files:
+                path1 = os.path.join(direct, file)
+                os.remove(path1)
+            file_path = os.path.join(direct, f.filename)
+            f.save(file_path)
+        except Exception as e:
+            return {"message": f"File upload file. An error occurred: {e}"}, 500
+        try:
+            result = resourceMasterUpload.delay(current_user['data'], file_path)
+        except:
+            return {"message": "background task failed"}, 400
+        database = Data.query.filter_by(id=current_user['data']).first()
+        bg_process = BGProcess(process_id=result.id, name="Resource Master Upload", database=database)
+        db.session.add(bg_process)
+        db.session.commit()
+
+        return {"message": "File uploaded and background processing started", "bgtaskid": result.id}, 201

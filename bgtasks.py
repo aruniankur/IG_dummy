@@ -2,9 +2,10 @@ from celery import shared_task
 from time import sleep
 from config import app
 import pandas as pd
-from models import db, User, Data,ItemUnit,ItemInventory, Workstation,Labor,ItemCustomField,ItemFinance,ItemFinance,ItemCategory,Category,Customer, ZohoInfo, UserDataMapping, Subscription, SubDataMapping, Company, DataConfiguration, Item, BOM
+from models import db, Data,ItemUnit,ItemInventory,Labor,ItemCustomField,ItemFinance,ItemFinance,ItemCategory,Category,Customer, DataConfiguration, Item, BOM
 import openpyxl
 import json
+
 
 
 celery_app = app.extensions["celery"] 
