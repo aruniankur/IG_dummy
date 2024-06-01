@@ -77,7 +77,7 @@ class Login(Resource):
 
 class Protected(Resource):
     @jwt_required()
-    @requires_role(['MASTERS'],["VIEWER", "EDITOR"],['MASTERS'])
+    @requires_role(['MASTERS'],0)
     def get(self):
         current_user = get_jwt_identity()
         #print(current_user)

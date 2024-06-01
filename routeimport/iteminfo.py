@@ -42,7 +42,7 @@ def compare_strings(s1, s2, code=""):
     
 class itemsinfo(Resource):
     @jwt_required()
-    @requires_role(['MASTERS'],["VIEWER", "EDITOR"],['MASTERS'])
+    @requires_role(['MASTERS'],0)
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -110,7 +110,7 @@ class itemsinfo(Resource):
 
 class add_bom_item(Resource):
     @jwt_required()
-    @requires_role(['MASTERS'],["EDITOR"],['MASTERS'])
+    @requires_role(['MASTERS'],1)
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -140,7 +140,7 @@ class add_bom_item(Resource):
 
 class edit_bom_item(Resource):
     @jwt_required()
-    @requires_role(['MASTERS'],["EDITOR"],['MASTERS'])
+    @requires_role(['MASTERS'],1)
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -166,7 +166,7 @@ class edit_bom_item(Resource):
 
 class delete_bom_item(Resource):
     @jwt_required()
-    @requires_role(['MASTERS'],["EDITOR"],['MASTERS'])
+    @requires_role(['MASTERS'],1)
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -188,7 +188,7 @@ class delete_bom_item(Resource):
 
 class add_category_to_item(Resource):
     @jwt_required()
-    @requires_role(['MASTERS'],["EDITOR"],['MASTERS'])
+    @requires_role(['MASTERS'],1)
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -219,7 +219,7 @@ class add_category_to_item(Resource):
 
 class delete_category_from_item(Resource):
     @jwt_required()
-    @requires_role(['MASTERS'],["EDITOR"],['MASTERS'])
+    @requires_role(['MASTERS'],1)
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -243,7 +243,7 @@ class delete_category_from_item(Resource):
 
 class edit_inventory_levels(Resource):
     @jwt_required()
-    @requires_role(['MASTERS'],["EDITOR"],['MASTERS'])
+    @requires_role(['MASTERS'],1)
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -274,7 +274,7 @@ class edit_inventory_levels(Resource):
 
 class edit_finance_info(Resource):
     @jwt_required()
-    @requires_role(['MASTERS'],["EDITOR"],['MASTERS'])
+    @requires_role(['MASTERS'],1)
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -304,7 +304,7 @@ class edit_finance_info(Resource):
 
 class edit_additional_fields(Resource):
     @jwt_required()
-    @requires_role(['MASTERS'],["EDITOR"],['MASTERS'])
+    @requires_role(['MASTERS'],1)
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -343,7 +343,7 @@ class edit_additional_fields(Resource):
 
 class add_bom_items(Resource):
     @jwt_required()
-    @requires_role(['MASTERS'],["EDITOR"],['MASTERS'])
+    @requires_role(['MASTERS'],1)
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -408,7 +408,7 @@ class add_bom_items(Resource):
 
 class delete_unit(Resource):
     @jwt_required()
-    @requires_role(['MASTERS'],["EDITOR"],['MASTERS'])
+    @requires_role(['MASTERS'],1)
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -429,7 +429,7 @@ class delete_unit(Resource):
 
 class search_item(Resource):
     @jwt_required()
-    @requires_role(['BASIC'],["VIEWER","EDITOR"],['MASTERS'])
+    @requires_role(['BASIC'],0)
     def post(self):
         current_user = get_jwt_identity()
         database= Data.query.filter_by(id = current_user["data"]).first()
@@ -481,7 +481,7 @@ class search_item(Resource):
 
 class getunits(Resource):
     @jwt_required()
-    @requires_role(['BASIC'],["VIEWER","EDITOR"],['MASTERS'])
+    @requires_role(['BASIC'],0)
     def get(self):
         current_user = get_jwt_identity()
         database= Data.query.filter_by(id = current_user["data"]).first()
@@ -491,7 +491,7 @@ class getunits(Resource):
     
 class createunit(Resource):
     @jwt_required()
-    @requires_role(['BASIC'],["EDITOR"],['MASTERS'])
+    @requires_role(['BASIC'],1)
     def post(self):
         current_user = get_jwt_identity()
         database= Data.query.filter_by(id = current_user["data"]).first()
@@ -517,7 +517,7 @@ class createunit(Resource):
         
 class createconversion(Resource):
     @jwt_required()
-    @requires_role(['BASIC'],["EDITOR"],['MASTERS'])
+    @requires_role(['BASIC'],1)
     def post(self):
         current_user = get_jwt_identity()
         database= Data.query.filter_by(id = current_user["data"]).first()
@@ -537,7 +537,7 @@ class createconversion(Resource):
 
 class units_relation_api(Resource):
     @jwt_required()
-    @requires_role(['BASIC'],["EDITOR"],['MASTERS'])
+    @requires_role(['BASIC'],1)
     def post(self):
         current_user = get_jwt_identity()
         database= Data.query.filter_by(id = current_user["data"]).first()

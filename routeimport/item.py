@@ -28,7 +28,7 @@ from routeimport.decorators import requires_role, get_segment, createjson
 
 class list_items(Resource):
     @jwt_required()
-    @requires_role(['MASTERS'],["VIEWER", "EDITOR"],['MASTERS'])
+    @requires_role(['MASTERS'],0)
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -57,7 +57,7 @@ class list_items(Resource):
 
 class add_item(Resource):
     @jwt_required()
-    @requires_role(['MASTERS'],["EDITOR"],['MASTERS'])
+    @requires_role(['MASTERS'],1)
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -95,7 +95,7 @@ class add_item(Resource):
     
 class edit_items(Resource):
     @jwt_required()
-    @requires_role(['MASTERS'],["EDITOR"])
+    @requires_role(['MASTERS'],1)
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -175,7 +175,7 @@ class edit_items(Resource):
 #see this
 class search_items(Resource):
     @jwt_required()
-    @requires_role(['MASTERS'],["VIEWER", "EDITOR"])
+    @requires_role(['MASTERS'],0)
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()

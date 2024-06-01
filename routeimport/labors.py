@@ -106,7 +106,7 @@ class searchlabor(Resource):
     
 class NewLaborResource(Resource):
     @jwt_required
-    @requires_role(["MASTERS"])
+    @requires_role(["MASTERS"], 0)
     def get(self):
         #/newlabor?download=YES
         download_stat = request.args.get("download")
@@ -127,7 +127,7 @@ class NewLaborResource(Resource):
 
         return {"message": "Invalid GET request"}, 400
     @jwt_required
-    @requires_role(["MASTERS"])
+    @requires_role(["MASTERS"], 0)
     def post(self):
         current_user = get_jwt_identity()
         if 'file' not in request.files:

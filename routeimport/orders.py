@@ -13,10 +13,55 @@ import datetime
 from routeimport.decorators import requires_role, get_segment, createjson
 
 
+class getorder(Resource):
+    @jwt_required
+    @requires_role(["ORDERS"], 0)
+    def get(self):
+        current_user = get_jwt_identity()
+        database = Data.query.filter_by(id = current_user["data"]).first()
+        show_flag_param = request.args.get("show_flag")
+        if show_flag_param:
+            show_flag = [show_flag_param]
+        else:
+            show_flag=['Active', 'Pending']
+        ORDERS_DATA={}
+        orders = Order.query.filter_by(database=database, order_type=0).all()
+        for order in orders:
+            ORDERS_DATA[order.id]={}
+            ORDERS_DATA[order.id]["order"]=order
+            customer=Customer.query.filter_by(id=order.customer_id, database=database).first()
+            ORDERS_DATA[order.id]["customer"]=customer
+            ORDERS_DATA[order.id]["items"]=[]
+            ORDERS_DATA[order.id]["chart_items"]=[]
+            ORDERS_DATA[order.id]["invoices"] = {invoice.invoice_class: invoice for invoice in order.invoice }
+            order_items = OrderItem.query.filter_by(order_id=order.id, database=database).all()
+            for order_item in order_items:
+                ORDERS_DATA[order.id]["items"].append(order_item)
+                ORDERS_DATA[order.id]["chart_items"].append([order_item.id, order_item.item.name, 
+                    order_item.order_qty, order_item.item.unit, 0, order_item.item.id])
+        items=Item.query.filter_by(database=database).all()
+        ITEMS=[]
+        for item in items:
+            ITEMS.append([item.id, item.name, item.rate, item.unit])
+        customers = Customer.query.filter_by(database=database).all()
+        CUSTOMERS = []
+        for customer in customers:
+            CUSTOMERS.append([customer.id, customer.name])
+        segment = get_segment(request, current_user['data'])
+        categories = Category.query.filter_by(database=database, category_type = 2).all()
+        CATEGORIES=[]
+        for item in categories:
+            CATEGORIES.append([item.id, item.name])
+        order_id_set = None
+        order = Order.query.filter_by(database=database, order_type = 0, status = show_flag[0]).first()
+        if order:
+            order_id_set = order.id
+        
+        return {"template_name":'orders_list_component_ui', "orders_data":ORDERS_DATA, "items" : ITEMS, "customers":CUSTOMERS, "show_flag":show_flag, "segment":segment, "TODAY" :datetime.date.today(), "order_info_html":order_info_html, "order_id_set":order_id_set, "categories":CATEGORIES}, 200
 
 class order_info(Resource):
     @jwt_required
-    #@requires_role()
+    @requires_role(["ORDERS"],0)
     def post(self):
         current_user = get_jwt_identity()
         database = Data.query.filter_by(id = current_user["data"]).first()
@@ -104,7 +149,7 @@ class order_info(Resource):
 
 class order_sheet(Resource):
     @jwt_required
-    #@requires_role()
+    @requires_role(['ORDER'], 0)
     def post(self):
         current_user = get_jwt_identity()
         database = Data.query.filter_by(id = current_user["data"]).first()
@@ -178,7 +223,7 @@ class order_sheet(Resource):
     
 class ordervalidation(Resource):
     @jwt_required
-    #@required_role()
+    @requires_role(['ORDER'], 0)
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -202,7 +247,7 @@ class ordervalidation(Resource):
         
 class get_order_breakup(Resource):
     @jwt_required
-    #@required_role()
+    @requires_role(['ORDER'], 2)
     def post(self):
         current_user = get_jwt_identity()
         database=Data.query.filter_by(id=current_user["data"]).first()
@@ -222,7 +267,7 @@ class get_order_breakup(Resource):
     
 class get_demand_breakup(Resource):
     @jwt_required
-    #@required_role
+    @requires_role(['ORDER'], 0)
     def post(self):
         current_user = get_jwt_identity()
         database=Data.query.filter_by(id=current_user["data"]).first()
