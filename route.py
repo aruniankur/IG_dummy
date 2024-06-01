@@ -18,6 +18,10 @@ from routeimport import item
 from routeimport import iteminfo
 from routeimport import categories
 from routeimport import labors
+from routeimport import orders
+from routeimport import purchase
+
+
 def register_routes(app,db):
     app.config['JWT_SECRET_KEY'] = 'YL8ck4TG1@cJvGfY#e5USH93@xCGu9'
     app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=15)
@@ -146,6 +150,9 @@ def register_routes(app,db):
     api.add_resource(item.add_item, '/AddItem')
     api.add_resource(item.edit_items, '/edit_items')
     api.add_resource(item.search_items, '/search_items')
+    api.add_resource(item.ItemCategoriesExcelResource,'/item_categories_excel')
+    api.add_resource(item.BOMItemsExcelResource, '/bom_items_excel')
+    
     #----------------------------------------------------------------
     api.add_resource(iteminfo.itemsinfo, '/ItemsInfo')
     api.add_resource(iteminfo.add_bom_item, '/add_bom_item')
@@ -180,3 +187,28 @@ def register_routes(app,db):
     
     #----------------------------------------------------------------
     
+    api.add_resource(orders.getorder, '/getorder')
+    api.add_resource(orders.addorder, '/addorder')
+    api.add_resource(orders.deleteorder, '/deleteorder')
+    api.add_resource(orders.dispatchorder, '/dispatchorder')
+    api.add_resource(orders.bulkentry, '/bulkentry')
+    api.add_resource(orders.addorderitem, '/addorderitem')
+    api.add_resource(orders.editorderitem, '/editorderitem')
+    api.add_resource(orders.deleteorderitem, '/deleteorderitem')
+    api.add_resource(orders.order_info, '/order_info')
+    api.add_resource(orders.order_sheet, '/order_sheet')
+    api.add_resource(orders.ordervalidation,'/ordervalidation')
+    api.add_resource(orders.get_order_breakup,'/get_order_breakup')
+    api.add_resource(orders.get_demand_breakup, '/get_demand_breakup')
+    api.add_resource(orders.updateDeliveryBatchInvoice,'/update_delivery_batch_invoice')
+    api.add_resource(orders.addDeliveryBatch, '/add_delivery_batch')
+    api.add_resource(orders.generateInvoice, '/generate_invoice')
+    api.add_resource(orders.dispatchchallan,'/dispatchchallan')
+    
+    #----------------------------------------------------------------
+    
+    api.add_resource(purchase.PurchaseOrders, '/purchaseorders')
+    api.add_resource(purchase.addneworder, '/addneworder')
+    api.add_resource(purchase.PurchaseOrderBreakupResource, '/purchase_order_breakup_resource')
+    api.add_resource(purchase.ReceiveChallan, '/receive_challan')
+

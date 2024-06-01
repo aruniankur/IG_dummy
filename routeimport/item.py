@@ -16,13 +16,13 @@ from sqlalchemy import func
 import datetime
 from sqlalchemy.orm import class_mapper
 import secrets
-from flask_restful import Api, Resource
+from flask_restful import Api, Resource, reqparse
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 import json
 import smtplib
-from bgtasks import long_running_task, long_running_task2
+from bgtasks import long_running_task, long_running_task2, update_category_linking, update_bom_linking
 from routeimport.decorators import requires_role, get_segment, createjson
-
+import os
     
 #----------------------------------------------------------------
 
@@ -253,4 +253,110 @@ class TaskStatusResource(Resource):
                 'state': task_result.state,
                 'status': str(task_result.info),  # This is the exception raised
             }
-        return jsonify(response)
+        return jsonify(response), 200
+    
+#----------------------------------------------------------------
+def category_excel_new(data_id):
+    print("creating excel file!!!")
+    database = Data.query.filter_by(id = data_id).first()
+    categories = Category.query.filter_by(database=database).all()
+    result = db.session.query(Item.id.label('item_id'),Item.name.label('item_name'), Category.id.label('category_id'), Category.name.label('category_name'))\
+        .join(ItemCategory, Item.id == ItemCategory.item_id)\
+        .join(Category, ItemCategory.category_id == Category.id)\
+        .filter(Item.data_id == data_id, Category.data_id == data_id)\
+        .all()
+    if result:
+        print("Non-empty result")
+        df = pd.DataFrame(result)[['item_name', 'category_name']]
+        pivot_table = df.pivot_table(index='item_name', columns='category_name', aggfunc=lambda x: 1, fill_value=0)
+        categories_name = [category.name for category in categories]
+        print(set(categories_name))
+        print(set(pivot_table.columns))
+        missing_categories = set(categories_name) - set(pivot_table.columns)
+        print(missing_categories)
+        for category in missing_categories:
+            pivot_table[category] = 0
+        pivot_table = pivot_table.reset_index()
+        print(pivot_table)
+        items=db.session.query(Item.id.label('item_id'),Item.name.label('item_name'), Item.code.label('item_code'))\
+        .filter(Item.data_id == data_id)\
+        .all()
+        items_df = pd.DataFrame(items)
+        pivot_table = pd.merge(pivot_table, items_df, left_on ='item_name', right_on='item_name', how='right')
+        pivot_table.fillna(0, inplace=True)
+    else:
+        result=db.session.query(Item.id.label('item_id'),Item.name.label('item_name'), Item.code.label('item_code'))\
+        .filter(Item.data_id == data_id)\
+        .all()
+        print("Empty result")
+        pivot_table = pd.DataFrame(result)[['item_name', 'item_code']]
+        missing_categories = set(categories)
+        for category in missing_categories:
+            pivot_table[category.name] = 0
+    pivot_table = pivot_table.rename(columns={'item_name': "Item Name"})
+    excel_filename = f"item_category_map_{database.key}.csv"
+    excel_path = f'downloads/{excel_filename}'
+    pivot_table.to_csv(excel_path, index=False)
+    return excel_filename
+    
+    
+class ItemCategoriesExcelResource(Resource):
+    @jwt_required
+    @requires_role(["MASTERS"], 0)
+    def post(self):
+        current_user = get_jwt_identity()
+        database = Data.query.filter_by(id=current_user["data"]).first()
+        parser = reqparse.RequestParser()
+        parser.add_argument('generate_file', type=str, required=True, help='Flag for generating file')
+        args = parser.parse_args()
+        generate_file_flag = args['generate_file']
+        if generate_file_flag == "YES":
+            file_name = category_excel_new(current_user["data"])
+            return jsonify({"status": "OK", "filename": file_name}), 200
+        direct = os.path.join(os.getcwd(), 'uploads')
+        f = request.files.get("file")
+        if f:
+            file_path = os.path.join(direct, f.filename)
+            f.save(file_path)
+            flash("File Uploaded to Server! Updating Item Category Mapping in Background.", "success")
+            result = update_category_linking.delay(file_path, current_user['data'])
+            bg_process = BGProcess(process_id=result.id, name="Item Category Linking Through CSV", database=database)
+            db.session.add(bg_process)
+            db.session.commit()
+            return {"message":"File Uploaded to Server! Updating Item Category Mapping in Background.", "resultid": result.id}, 200
+        return {"message":"check file"}, 401
+
+
+#----------------------------------------------------------------
+
+class BOMItemsExcelResource(Resource):
+    @jwt_required
+    @requires_role(["MASTERS"], 0)
+    def post(self):
+        current_user = get_jwt_identity()
+        parser = reqparse.RequestParser()
+        parser.add_argument('file', type='file', location='files')
+        args = parser.parse_args()
+        f = args['file']
+        direct = os.path.join(os.getcwd(), 'uploads')
+        file_path = os.path.join(direct, f.filename)
+        f.save(file_path)
+        database = Data.query.filter_by(id=current_user["data"]).first()
+        result = update_bom_linking.delay(file_path, current_user['data'])
+        bg_process = BGProcess(process_id=result.id, name="BOM Relation Upload Through CSV", database=database)
+        db.session.add(bg_process)
+        db.session.commit()
+        return {"message": "File uploaded successfully. Item category mapping is being updated in the background.", "result_id":result.id}, 200
+    @jwt_required
+    @requires_role(["MASTERS"], 0)
+    def get(self):
+        download_stat = request.args.get("download")
+        if download_stat == "YES":
+            direct = os.path.join(os.getcwd(), 'downloads')
+            list_files = os.listdir(direct)
+            file_name = "bom_format.csv" 
+            return {"message": "Download the CSV file"}, 200
+        else:
+            return {"message": "Invalid request. Please provide 'download=YES' parameter."}, 400
+
+

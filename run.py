@@ -16,5 +16,5 @@ db.init_app(app)
 register_routes(app, db)
 migrate = Migrate(app, db)
 if __name__ == '__main__': 
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0")
     
