@@ -2,7 +2,7 @@ from celery import shared_task
 from time import sleep
 from config import app
 import pandas as pd
-from models import db, Data,ItemUnit,ItemInventory,Labor,ItemCustomField,ItemFinance,ItemFinance,ItemCategory,Category,Customer, DataConfiguration, Item, BOM
+from models import db, Data,ItemUnit,ItemInventory,Inventory, Labor,ItemCustomField,ItemFinance,ItemFinance,ItemCategory,Category,Customer, DataConfiguration, Item, BOM
 import openpyxl
 import json
 
@@ -215,13 +215,9 @@ def resourceMasterUpload(database_id, file_path):
     df = pd.DataFrame(sheet.values)
     df.columns = df.iloc[0]  # Set column names from the first row
     df = df.iloc[1:]  # Remove the first row
-
-    # Filter rows with empty names
     df = df[df['NAME'].notnull()]
     df = df[df['NAME'].str.strip() != '']
     res_string = ""
-
-    # Split the dataframe into two parts
     items_df = pd.DataFrame(db.session.query(Labor.name).filter(Labor.data_id == database_id).all(), columns=["name"])
     # print(items_df)
     new_items_df = df[~df['NAME'].isin(items_df['name'].tolist())]
@@ -355,4 +351,43 @@ def itemCopyData(database_id, checkboxes, from_item_id, to_item_ids):
             db.session.commit()
         res+= f"{to_item.name},"
     res+= ". Copied Successfully"
+    return res
+
+
+
+@shared_task(ignore_result=False)
+def addStockList(data_id, file_path):
+    database = Data.query.filter_by(id = data_id).first()
+    inventory_stock_data = db.session.query(
+            Inventory.item_id,Item.code,
+            Item.name,Item.unit,
+            db.func.sum(Inventory.qty).label("total_quantity")
+        ).join(Item, Inventory.item_id == Item.id)\
+        .group_by(Inventory.item_id, Item.code, Item.name, Item.unit).filter(Inventory.data_id == database.id, Inventory.status=='ACTIVE').all()
+    inventory_stock_df = pd.DataFrame(inventory_stock_data, columns=["item_id","item_code", "Item Name", "Item Unit","total_stock" ])
+    stock_list_df = pd.read_csv(file_path)
+    stock_list_df["note"] = stock_list_df["note"].fillna("_excel_reconcilation")
+    stock_list_df = stock_list_df.dropna()
+    stock_list_df["qty"] = stock_list_df["new_stock"]-stock_list_df["total_stock"]
+    res=""
+    for index, row in stock_list_df.iterrows():
+        try:
+            item = Item.query.filter_by(database=database, code=row["item_code"]).first()
+        except:
+            res+=f"Problem in {row['Item Name']}, does not match! "
+            continue
+        if item:
+            try:
+                system_stock = inventory_stock_df.loc[inventory_stock_df['item_id'] == item.id, 'total_stock'].values[0]
+                print("Exception in system stock")
+                adjustment_value = float(row["new_stock"]) - float(system_stock)
+                print(adjustment_value)
+            except:
+                print("Exception!!!")
+                system_stock = float(row['total_stock'])
+                adjustment_value = row['qty']
+            if row["qty"]:
+                inventory = Inventory(database=database, item=item, qty=adjustment_value, note=row["note"]+ f"_[{system_stock} to {row['new_stock']} {item.unit}]", item_unit=item.unit)
+                db.session.add(inventory)
+    db.session.commit()
     return res
