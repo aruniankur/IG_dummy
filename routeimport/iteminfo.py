@@ -103,7 +103,8 @@ class itemsinfo(Resource):
             segment = get_segment(request,current_user["data"])     
             response = {'ITEM':createjson(ITEM), 'categories':CATEGORIES, 'items':ITEMS, 'BOM_DATA':createjson(BOM_DATA),
                                 'CHART_BOM_DATA':CHART_BOM_DATA, 'raw_bool':raw_bool, 'anti_raw_bool':anti_raw_bool,
-                                'item_categories':createjson(ITEM_CATEGORIES), 'units':createjson(ITEM_UNITS), 'item_master_config':json.loads(data_config.item_master_config),
+                                'item_categories':createjson(ITEM_CATEGORIES), 'units':createjson(ITEM_UNITS), 
+                                'item_master_config':json.loads(data_config.item_master_config),
                                 'additional_fields_dict':additional_fields_dict, 'segment':segment}
         return response, 200
 #----------------------------------------------------------------
@@ -474,7 +475,8 @@ class search_item(Resource):
             {   'id': item.id,'name': item.name,'unit': item.unit,'rate': item.rate,'code': item.code,'raw_flag': item.raw_flag,
                 'itemfinance': {'cost_price': item.itemfinance.cost_price,'sale_price': item.itemfinance.sale_price,'tax': item.itemfinance.tax,'hsn_code': item.itemfinance.hsn_code
                 } if item.itemfinance else None} for item in items]
-        return jsonify(results), 200
+        #print(results)
+        return results, 200
         
         
 #----------------------------------------------------------------

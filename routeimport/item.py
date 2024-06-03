@@ -52,7 +52,8 @@ class list_items(Resource):
         items = items[start:end]
         units = Unit.query.filter_by(database=database).all()
         segment = get_segment(request,current_user["data"])
-        response = {'items':createjson(items), 'categories':CATEGORIES, 'filter_category_pairs':FILTER_CATEGORY_PAIRS, 'filter_type':filter_type, 'pagination':createjson(pagination), 'units':createjson(units), 'segment':segment}
+        response = {'items':createjson(items), 'categories':CATEGORIES, 'filter_category_pairs':FILTER_CATEGORY_PAIRS, 
+                    'filter_type':filter_type, 'pagination':createjson(pagination), 'units':createjson(units), 'segment':segment}
         return response , 200
 
 class add_item(Resource):

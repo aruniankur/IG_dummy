@@ -1,5 +1,5 @@
 from functools import wraps
-from models import User, UserDataMapping, Data
+from models import User, UserDataMapping, Data, ItemUnit
 import json
 from flask_jwt_extended import get_jwt_identity
 import datetime
@@ -58,7 +58,16 @@ def createjson(dbt):
         return [convert_to_dict(item) for item in dbt]
     else:
         return convert_to_dict(dbt)
-    
+ 
+ 
+def get_conversion_factor(database, item, unit_name):
+    print(database.id, item.name, unit_name)
+    if item.unit == unit_name:
+        return 1
+    item_unit = ItemUnit.query.filter_by(database=database, item = item, unit_name = unit_name).first()
+    if item_unit:
+        return item_unit.conversion_factor
+    return 1   
     
 def get_segment(request, id1):
     try:
