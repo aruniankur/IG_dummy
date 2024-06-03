@@ -220,7 +220,7 @@ class search_items(Resource):
                 return "Connection Error"
             items = items_dict
         else:
-            items = Item.query.filter_by(data_id=session['data']).all()
+            items = Item.query.filter_by(data_id=current_user['data']).all()
 
         return render_template("items/items_list.html", items=items)
     

@@ -155,7 +155,7 @@ class dispatchorder(Resource):
                         ).all(),columns=['id', 'item_name', 'unit'])
             order_item_dispatch_df = pd.DataFrame(
                 db.session.query(OrderItemDispatch.id,OrderItemDispatch.dispatch_qty,OrderItemDispatch.delivery_batch_id,OrderItemDispatch.order_item_id,
-                    ).filter(OrderItemDispatch.data_id == session['data'], OrderItemDispatch.delivery_batch_id.in_(delivery_batch_ids)).all(),
+                    ).filter(OrderItemDispatch.data_id == current_user['data'], OrderItemDispatch.delivery_batch_id.in_(delivery_batch_ids)).all(),
                 columns=['order_item_dispatch_id', 'dispatch_qty', 'delivery_batch_id', 'order_item_id']
                 )
             order_item_dispatch_df.dropna(inplace = True)
@@ -257,7 +257,7 @@ class bulkentry(Resource):
                         order_item.order_qty = order_qty
                         print("OrderItemEdited")
             # numbers_list = get_mobile_numbers(current_user["data"])
-            # user = User.query.filter_by(id=session["user_id"]).first()
+            # user = User.query.filter_by(id=current_user["user_id"]).first()
             # for number in numbers_list:
             #     if order.order_type == 0:
             #         resp = SEND_CUSTOM_MESSAGE(f"Items added to Sales Order of {order.customer.name} by {user.name}!", number)
@@ -397,7 +397,7 @@ class order_info(Resource):
                         OrderItemDispatch.dispatch_qty,
                         OrderItemDispatch.delivery_batch_id,
                         OrderItemDispatch.order_item_id,
-                    ).filter(OrderItemDispatch.data_id == session['data'], OrderItemDispatch.delivery_batch_id.in_(delivery_batch_ids)).all(),
+                    ).filter(OrderItemDispatch.data_id == current_user['data'], OrderItemDispatch.delivery_batch_id.in_(delivery_batch_ids)).all(),
                 columns=['order_item_dispatch_id', 'dispatch_qty', 'delivery_batch_id', 'order_item_id']
                 )
             order_item_dispatch_df.dropna(inplace = True)
@@ -426,7 +426,7 @@ class order_info(Resource):
             ).join(
             Item, Inventory.item_id == Item.id).group_by(
             Inventory.item_id, Item.name, Item.unit).filter(
-            Inventory.data_id == session["data"], Inventory.status == "ACTIVE").all()
+            Inventory.data_id == current_user["data"], Inventory.status == "ACTIVE").all()
             inventory_stock_df = pd.DataFrame(inventory_stock_data, columns=["item_id", "Item Name", "Item Unit","total_stock" ])
             inventory_dict = inventory_stock_df.set_index("item_id").to_dict(orient="index")
             return jsonify({"message":"Redirect", "uri": "order_info_component.html" ,"orders_data":ORDERS_DATA, "DATA": DATA, "TODAY":TODAY, "INVENTORY_DATA":inventory_dict }), 302
@@ -463,7 +463,7 @@ class order_sheet(Resource):
             order_item_dispatch_df = pd.DataFrame(
                 db.session.query(OrderItemDispatch.id,OrderItemDispatch.dispatch_qty,
                         OrderItemDispatch.delivery_batch_id,OrderItemDispatch.order_item_id,
-                    ).filter(OrderItemDispatch.data_id == session['data'], OrderItemDispatch.delivery_batch_id.in_(delivery_batch_ids)).all(),
+                    ).filter(OrderItemDispatch.data_id == current_user['data'], OrderItemDispatch.delivery_batch_id.in_(delivery_batch_ids)).all(),
                 columns=['order_item_dispatch_id', 'dispatch_qty', 'delivery_batch_id', 'order_item_id'])
             order_item_dispatch_df.dropna(inplace = True)
             # print(order_items_df, order_item_dispatch_df)
@@ -477,7 +477,7 @@ class order_sheet(Resource):
                 Inventory.item_id,Item.name,Item.unit,db.func.sum(Inventory.qty).label("total_quantity")).join(
             Item, Inventory.item_id == Item.id).group_by(
             Inventory.item_id, Item.name, Item.unit).filter(
-            Inventory.data_id == session["data"], Inventory.status == "ACTIVE").all()
+            Inventory.data_id == current_user["data"], Inventory.status == "ACTIVE").all()
         # Convert inventory_stock_data to DataFrame
             inventory_stock_df = pd.DataFrame(inventory_stock_data, columns=["item_id", "Item Name", "Item Unit","total_stock" ])
             inventory_dict = inventory_stock_df.set_index("item_id").to_dict(orient="index")
@@ -602,7 +602,6 @@ class addDeliveryBatch(Resource):
         current_user = get_jwt_identity()
         database=Data.query.filter_by(id=current_user["data"]).first()
         req_json = request.get_json()
-        database = Data.query.filter_by(id=session['data']).first()
         batch_name = req_json.get('batch_name')
         desp_date = req_json.get('desp_date')
         order_id = req_json.get('order_id')

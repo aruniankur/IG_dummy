@@ -152,7 +152,6 @@ def register_routes(app,db):
     api.add_resource(item.search_items, '/search_items')
     api.add_resource(item.ItemCategoriesExcelResource,'/item_categories_excel')
     api.add_resource(item.BOMItemsExcelResource, '/bom_items_excel')
-    
     #----------------------------------------------------------------
     api.add_resource(iteminfo.itemsinfo, '/ItemsInfo')
     api.add_resource(iteminfo.add_bom_item, '/add_bom_item')
@@ -169,6 +168,7 @@ def register_routes(app,db):
     api.add_resource(iteminfo.createunit,'/create_unit')
     api.add_resource(iteminfo.createconversion,'/createconversion')
     api.add_resource(iteminfo.units_relation_api,'/units_relationapi')
+    api.add_resource(iteminfo.search_item, '/searchitem')
     #------------------------------------------------------------------
     api.add_resource(categories.catogory,'/catogory')
     api.add_resource(categories.Addcategory,'/add_category')
@@ -212,3 +212,4 @@ def register_routes(app,db):
     api.add_resource(purchase.PurchaseOrderBreakupResource, '/purchase_order_breakup_resource')
     api.add_resource(purchase.ReceiveChallan, '/receive_challan')
 
+    #----------------------------------------------------------------

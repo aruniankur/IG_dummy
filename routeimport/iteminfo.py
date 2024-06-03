@@ -311,7 +311,7 @@ class edit_additional_fields(Resource):
         if current_user["role"] == 'gjfkADMIN':
             return {'message':'method not allowed'} , 401
         else:
-            database = Data.query.filter_by(id=session["data"]).first()
+            database = Data.query.filter_by(id=current_user["data"]).first()
             item_id = data.get("item_id")
             additional_fields_flag = data.get("additional_fields_flag")
 
