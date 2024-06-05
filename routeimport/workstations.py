@@ -484,11 +484,10 @@ class workstation(Resource):
         for item in item_categories:
             CATEGORIES.append([item.id, item.name])
             CATEGORIES_MAP[f"{item.id}"] = item.name
-        print("done ")
-        print(jobs_breakup)
+        jobs_breakup[workstation.id] = createjson(workstation)
         return jsonify(child_workstations = createjson(child_workstations), workstation_jobs = createjson(workstation_jobs),
-     workstation_resources= createjson(workstation_resources), workstation=createjson(workstation), data = DATA, WS_DATE=ws_date, leaf_data=leaf_data, jobs_breakup=jobs_breakup,
-     primary_ws_flag = primary_ws_flag, WORKSTATION_PATH = WORKSTATION_PATH, segment=["workstations"], categories = CATEGORIES, CATEGORIES_MAP=CATEGORIES_MAP), 200
+     workstation_resources= createjson(workstation_resources), workstation=createjson(workstation), data = DATA, WS_DATE=ws_date, leaf_data=leaf_data, jobs_breakup=jobs_breakup ,
+     primary_ws_flag = primary_ws_flag, WORKSTATION_PATH = WORKSTATION_PATH, segment=["workstations"], categories = CATEGORIES, CATEGORIES_MAP=CATEGORIES_MAP)
     
 class addworkstation(Resource):
     @jwt_required()
