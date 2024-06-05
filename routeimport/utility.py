@@ -11,7 +11,7 @@ table_names = {"ws_jobs":WorkstationJob, "ws_resources":WorkstationResource}
 
 
 class addrecord(Resource):
-    @jwt_required
+    @jwt_required()
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -32,7 +32,7 @@ class addrecord(Resource):
     
         
 class editrecord(Resource):
-    @jwt_required
+    @jwt_required()
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -52,7 +52,7 @@ class editrecord(Resource):
     
 
 class delete_record(Resource):
-    @jwt_required
+    @jwt_required()
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -71,7 +71,7 @@ class delete_record(Resource):
         
 
 class check_status(Resource):
-    @jwt_required
+    @jwt_required()
     def post(self):
         data = request.get_json()
         process_id = data.get("process_id")
@@ -83,7 +83,7 @@ class check_status(Resource):
         
 
 class downloadFile(Resource):
-    @jwt_required
+    @jwt_required()
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -114,7 +114,7 @@ def update_task_status(database):
 
 
 class get_bg_tasks(Resource):
-    @jwt_required
+    @jwt_required()
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
@@ -147,7 +147,7 @@ class get_bg_tasks(Resource):
         
         
 class get_max_pbsl(Resource):
-    @jwt_required
+    @jwt_required()
     def post(self):
         current_user = get_jwt_identity()
         data_id = current_user["data"]

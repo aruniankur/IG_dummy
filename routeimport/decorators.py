@@ -61,7 +61,7 @@ def createjson(dbt):
  
  
 def get_conversion_factor(database, item, unit_name):
-    print(database.id, item.name, unit_name)
+    #print(database.id, item.name, unit_name)
     if item.unit == unit_name:
         return 1
     item_unit = ItemUnit.query.filter_by(database=database, item = item, unit_name = unit_name).first()

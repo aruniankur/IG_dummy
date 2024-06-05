@@ -83,8 +83,8 @@ class itemsinfo(Resource):
             ITEM_CATEGORIES = ItemCategory.query.filter_by(database=database, item=ITEM).all()
             ITEM_UNITS = ItemUnit.query.filter_by(database=database, item=ITEM).all()
 
-            items = Item.query.filter_by(data_id=current_user["data"]).all()
-            ITEMS = [[item.id, item.name, item.unit, item.rate] for item in items if item not in item_parent_tree]
+            # items = Item.query.filter_by(data_id=current_user["data"]).all()
+            # ITEMS = [[item.id, item.name, item.unit, item.rate] for item in items if item not in item_parent_tree]
 
             categories = Category.query.filter_by(data_id=current_user["data"]).all()
             CATEGORIES = [[item.id, item.name] for item in categories]
@@ -100,9 +100,10 @@ class itemsinfo(Resource):
             additional_fields = ItemCustomField.query.filter_by(database=database, item=ITEM).all()
             additional_fields_dict = {field.field_name: field.field_value for field in additional_fields}
 
-            segment = get_segment(request,current_user["data"])     
-            response = {'ITEM':createjson(ITEM), 'categories':CATEGORIES, 'items':ITEMS, 'BOM_DATA':createjson(BOM_DATA),
-                                'CHART_BOM_DATA':CHART_BOM_DATA, 'raw_bool':raw_bool, 'anti_raw_bool':anti_raw_bool,
+            segment = get_segment(request,current_user["data"])  
+            print(ITEM.boms)
+            response = {'ITEM':createjson(ITEM),'itemfinance':createjson(ITEM.itemfinance), 'categories':CATEGORIES, 'BOM_DATA':createjson(BOM_DATA),
+                                'CHART_BOM_DATA':CHART_BOM_DATA, 'raw_bool':raw_bool, 'anti_raw_bool':anti_raw_bool, 'itemboms':createjson(ITEM.boms),
                                 'item_categories':createjson(ITEM_CATEGORIES), 'units':createjson(ITEM_UNITS), 
                                 'item_master_config':json.loads(data_config.item_master_config),
                                 'additional_fields_dict':additional_fields_dict, 'segment':segment}
@@ -386,23 +387,22 @@ class add_bom_items(Resource):
                 qty_list = data.get("items_qtys[]",[])
                 unit_list = data.get("item_units[]",[])
                 margin_list = data.get("item_margins[]",[])
-
-                if len(id_list) == len(qty_list) == len(unit_list) == len(margin_list):
+                if (3 * len(id_list)) == (len(qty_list) + len(unit_list) + len(margin_list)):
                     for bom_item in bom_items:
                         db.session.delete(bom_item)
-
                     for i in range(len(id_list)):
                         child_item = Item.query.filter_by(database=database, id=id_list[i]).first()
                         if child_item in item_parent_tree:
-                            flash(f"Cannot add {child_item.name}. It exists in the BOM chain!", "danger")
+                            print(f"Cannot add {child_item.name}. It exists in the BOM chain!")
                             continue
                         unit = unit_list[i]
+                        print(unit, "23444")
                         conversion_factor = get_conversion_factor(database, child_item, unit)
                         qty = float(qty_list[i]) / conversion_factor
                         margin = margin_list[i]
                         bom_map = BOM(database=database, parent_item=parent_item, child_item=child_item, child_item_qty=qty, margin=margin)
                         db.session.add(bom_map)
-                    db.session.commit()
+                        db.session.commit()
                     return {'message': 'Successfully Added BOM!'}, 200
                 else:
                     return {'message': 'Invalid Request FOR BOM!'}, 401
@@ -463,7 +463,7 @@ def searchitemouter(k, item_name, item_id, filters, data):
         items = [match[0] for match in top_k_matches]
     if item_id:
         items = Item.query.filter_by(id =item_id, data_id = data).all()
-    results = [{'id': item.id,'name': item.name,'unit': item.unit,'rate': item.rate,'code': item.code,'raw_flag': item.raw_flag,
+    results = [{'id': item.id,'name': item.name,'unit': item.unit,'rate': item.rate,'code': item.code,'raw_flag': item.raw_flag,'regdate':str(item.regdate),
                 'itemfinance': {'cost_price': item.itemfinance.cost_price,'sale_price': item.itemfinance.sale_price,'tax': item.itemfinance.tax,'hsn_code': item.itemfinance.hsn_code
                 } if item.itemfinance else None} for item in items]
     return results

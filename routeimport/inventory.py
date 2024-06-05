@@ -18,15 +18,15 @@ from sqlalchemy import or_
 from bgtasks import addStockList
 from routeimport.iteminfo import searchitemouter
 # class addrecord(Resource):
-#     @jwt_required
+#     @jwt_required()
 #     def post(self):
 #         current_user = get_jwt_identity()
 #         data = request.get_json()
 #segment = get_segment(request, current_user['data'])
 
 
-class inventory(Resource):
-    @jwt_required
+class Inventory(Resource):
+    @jwt_required()
     @requires_role(["INVENTORY"], 0)
     def get(self):
         current_user = get_jwt_identity()
@@ -36,11 +36,11 @@ class inventory(Resource):
         for item in categories:
             CATEGORIES.append([item.id, item.name])
         segment = get_segment(request, current_user['data'])
-        return {"message": "inventory/inventory.html", "segment": segment, "categories": createjson(CATEGORIES)}, 200
+        return {"message": "inventory/inventory.html", "segment": segment, "categories": CATEGORIES}, 200
     
     
 class bulkentryinventory(Resource):
-    @jwt_required
+    @jwt_required()
     @requires_role(["INVENTORY"], 1)
     def post(self):
         current_user = get_jwt_identity()
@@ -68,7 +68,7 @@ class bulkentryinventory(Resource):
     
 
 class addinventoryledger(Resource):
-    @jwt_required
+    @jwt_required()
     @requires_role(["INVENTORY"], 1)
     def post(self):
         current_user = get_jwt_identity()
@@ -91,12 +91,12 @@ class addinventoryledger(Resource):
         
 
 # class addinventoryledger(Resource):
-#     @jwt_required
+#     @jwt_required()
 #     @requires_role(["INVENTORY"], 0)
 
         
 class inventoryledger(Resource):
-    @jwt_required
+    @jwt_required()
     @requires_role(["INVENTORY"], 0)
     def post(self):
         current_user = get_jwt_identity()
@@ -139,7 +139,7 @@ class inventoryledger(Resource):
     
 
 class inventoryLookup(Resource):
-    @jwt_required
+    @jwt_required()
     @requires_role(["INVENTORY"], 0)
     def post(self):
         current_user = get_jwt_identity()
@@ -239,7 +239,7 @@ class inventoryLookup(Resource):
     
     
 class stock_reconcilation(Resource):
-    @jwt_required
+    @jwt_required()
     @requires_role(['INVENTORY'], 0)
     def get(post):
         current_user = get_jwt_identity()
@@ -250,7 +250,7 @@ class stock_reconcilation(Resource):
         inventory_stock_df = pd.DataFrame(inventory_stock_data, columns=["item_id","item_code", "Item Name", "Item Unit","total_stock" ])
         return {"Data":inventory_stock_df.to_dict(orient="records")}, 200
     
-    @jwt_required
+    @jwt_required()
     @requires_role(["INVENTORY"], 0)
     def post(self):
         current_user = get_jwt_identity()

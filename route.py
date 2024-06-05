@@ -15,7 +15,7 @@ from routeimport import dashboard
 from routeimport import settingsuri
 from routeimport import authorise, item, iteminfo
 from routeimport import categories, labors, orders
-from routeimport import purchase, utility, inventory, maketostock
+from routeimport import purchase, utility, inventory, maketostock, workstations
 
 def register_routes(app,db):
     app.config['JWT_SECRET_KEY'] = 'YL8ck4TG1@cJvGfY#e5USH93@xCGu9'
@@ -176,12 +176,9 @@ def register_routes(app,db):
     api.add_resource(labors.NewLaborResource, '/labors/newlabor')
     #/newlabor?download=YES
     #------------------------------------------------------------------
-    
     api.add_resource(item.TaskStatusResource, '/status/<task_id>')
     api.add_resource(item.ItemListResource, '/items')
-    
     #----------------------------------------------------------------
-    
     api.add_resource(orders.getorder, '/getorder')
     api.add_resource(orders.addorder, '/addorder')
     api.add_resource(orders.deleteorder, '/deleteorder')
@@ -219,9 +216,17 @@ def register_routes(app,db):
     
     #----------------------------------------------------------------
     
-    api.add_resource(inventory.inventory, '/inventory')
+    api.add_resource(inventory.Inventory, '/inventory')
     api.add_resource(inventory.bulkentryinventory, '/bulkentryinventory')
     api.add_resource(inventory.addinventoryledger, '/add_inventory_ledger')
     api.add_resource(inventory.inventoryledger, '/inventory_ledger')
     api.add_resource(inventory.inventoryLookup, '/inventory_lookup')
     api.add_resource(inventory.stock_reconcilation, '/stock_reconcilation')
+
+    #----------------------------------------------------------------
+    
+    api.add_resource(workstations.workstation, '/workstation', '/workstation/<int:workstation_id>', '/workstation/<int:workstation_id>/<string:date>')
+    api.add_resource(workstations.addworkstation, '/addworkstation')
+    api.add_resource(workstations.addjobtoworkstation, '/addjobtoworkstation')
+    api.add_resource(workstations.editjobtoworkstation, '/editjobtoworkstation')
+    api.add_resource(workstations.deletejobtoworkstation, '/deletejobtoworkstation')

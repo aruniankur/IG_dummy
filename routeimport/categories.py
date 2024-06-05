@@ -4,6 +4,7 @@ from flask_restful import Resource
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from routeimport.decorators import requires_role, get_segment, createjson
 
+
 class catogory(Resource):
     @jwt_required()
     @requires_role(['MASTERS'],0)
