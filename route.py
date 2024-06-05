@@ -13,14 +13,9 @@ import uuid
 import smtplib
 from routeimport import dashboard
 from routeimport import settingsuri
-from routeimport import authorise
-from routeimport import item
-from routeimport import iteminfo
-from routeimport import categories
-from routeimport import labors
-from routeimport import orders
-from routeimport import purchase
-
+from routeimport import authorise, item, iteminfo
+from routeimport import categories, labors, orders
+from routeimport import purchase, utility, inventory, maketostock
 
 def register_routes(app,db):
     app.config['JWT_SECRET_KEY'] = 'YL8ck4TG1@cJvGfY#e5USH93@xCGu9'
@@ -213,3 +208,20 @@ def register_routes(app,db):
     api.add_resource(purchase.ReceiveChallan, '/receive_challan')
 
     #----------------------------------------------------------------
+    
+    api.add_resource(utility.addrecord, '/addrecord')
+    api.add_resource(utility.editrecord, '/editrecord')
+    api.add_resource(utility.delete_record, '/deleterecord')
+    api.add_resource(utility.check_status, '/check_status')
+    api.add_resource(utility.downloadFile, '/download_file')
+    api.add_resource(utility.get_bg_tasks, '/get_bg_tasks')
+    api.add_resource(utility.get_max_pbsl, '/get_max_pbsl')
+    
+    #----------------------------------------------------------------
+    
+    api.add_resource(inventory.inventory, '/inventory')
+    api.add_resource(inventory.bulkentryinventory, '/bulkentryinventory')
+    api.add_resource(inventory.addinventoryledger, '/add_inventory_ledger')
+    api.add_resource(inventory.inventoryledger, '/inventory_ledger')
+    api.add_resource(inventory.inventoryLookup, '/inventory_lookup')
+    api.add_resource(inventory.stock_reconcilation, '/stock_reconcilation')

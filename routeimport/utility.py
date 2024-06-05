@@ -1,6 +1,6 @@
 from flask import Flask, jsonify, render_template, request,send_from_directory
 from models import db, Labor, Item, BOM, Data, ProdchartItem, Inventory, WorkstationJob, WorkstationResource, BGProcess, MobileNumber
-from decorators import requires_role, get_segment, createjson
+from routeimport.decorators import requires_role, get_segment, createjson
 import pandas as pd
 from celery.result import AsyncResult
 import os 

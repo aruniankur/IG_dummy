@@ -16,7 +16,7 @@ from routeimport.utility import get_mobile_numbers
 from routeimport.bot_utility import SEND_MESSAGE, SEND_CUSTOM_MESSAGE
 from sqlalchemy import or_
 from bgtasks import addStockList
-
+from routeimport.iteminfo import searchitemouter
 # class addrecord(Resource):
 #     @jwt_required
 #     def post(self):
@@ -95,3 +95,219 @@ class addinventoryledger(Resource):
 #     @requires_role(["INVENTORY"], 0)
 
         
+class inventoryledger(Resource):
+    @jwt_required
+    @requires_role(["INVENTORY"], 0)
+    def post(self):
+        current_user = get_jwt_identity()
+        req_json = request.get_json()
+        database = Data.query.filter_by(id = current_user["data"]).first()
+        k = int(req_json.get('k', 25 ))  # Default value is 10
+        item_id = req_json.get('item_id', None)
+        item_filter = req_json.get('item_filter', "no")
+        data_type = req_json.get('data_type', "ACTIVE")
+        filters = req_json["filters"]
+        if item_filter == "yes":
+            items_dict = searchitemouter(k, None, None,filters,current_user["data"])
+            items_df = pd.DataFrame(items_dict)
+        epsilon = 1e-2
+        if item_id:
+            inventories = db.session.query(Inventory.item_id, Item.name, Inventory.qty, Inventory.item_unit, Inventory.note, Inventory.regdate
+                ).filter(Inventory.data_id == current_user["data"], Inventory.status==data_type, Inventory.item_id == item_id).join(Item, Inventory.item_id == Item.id).order_by(Inventory.regdate.desc()).all()
+        elif k>=0:
+            inventories = db.session.query(Inventory.item_id, Item.name, Inventory.qty, Inventory.item_unit, Inventory.note, Inventory.regdate
+                ).filter(Inventory.data_id == current_user["data"], or_(Inventory.qty > epsilon, Inventory.qty < -epsilon) ).join(Item, Inventory.item_id == Item.id).order_by(Inventory.regdate.desc()).limit(k).all()
+        else:
+            inventories = db.session.query(Inventory.item_id, Item.name, Inventory.qty, Inventory.item_unit, Inventory.note, Inventory.regdate
+                ).filter(Inventory.data_id == current_user["data"], or_(Inventory.qty > epsilon, Inventory.qty < -epsilon) ).join(Item, Inventory.item_id == Item.id).order_by(Inventory.regdate.desc()).all()
+        inventories_df = pd.DataFrame(inventories, 
+            columns=["item_id", "name", "qty", "item_unit", "note", "regdate"]
+            )
+        if item_filter == "yes":
+            if k<=0:
+                start_date = req_json.get("startDate", None)
+                end_date = req_json.get("endDate", None)
+                print(start_date, end_date)
+                if start_date and end_date:
+                    inventories_df = inventories_df[(inventories_df['regdate'] >= start_date) & (inventories_df['regdate'] <= end_date)]
+            try:
+                inventories_df = pd.merge(inventories_df, items_df, left_on="item_id", right_on="id", how="inner", suffixes=('', '_items'))
+            except:
+                print(items_df)
+        inventories_df['regdate'] = inventories_df['regdate'].dt.strftime('%d-%m-%Y')
+        return inventories_df.to_dict(orient="records"), 200
+    
+
+class inventoryLookup(Resource):
+    @jwt_required
+    @requires_role(["INVENTORY"], 0)
+    def post(self):
+        current_user = get_jwt_identity()
+        database = Data.query.filter_by(id = current_user["data"]).first()
+        req_json= request.get_json()
+        k = int(req_json.get('k', None))  # Default value is 10
+        item_id = req_json.get("item_id", None)
+        item_string = req_json.get('item_search_string', None)
+        item_filter = req_json.get('item_filter', "no")
+        stock_list = req_json.get('stock_list', "no")
+        filters = req_json.get('filters', None)
+        data_type = req_json.get('data_type', "ACTIVE")
+        print("filters:", filters)
+        if item_filter == "yes" and filters:
+            try:
+                items_dict = searchitemouter(-1, None, None, filters, current_user['data'])
+                items_df_filters = pd.DataFrame(items_dict)
+                print(items_df_filters)
+            except requests.ConnectionError:
+                print("this is the error points 1")
+        if item_string:
+            print("item_stirng:", item_string)
+            try:
+                items_dict = searchitemouter(200, item_string, None, None, current_user['data'])
+                items_df_search = pd.DataFrame(items_dict)
+                print(items_df_search)
+            except requests.ConnectionError:
+                print("this is the error points 2")
+        items_data = db.session.query(Item.id,Item.code,Item.name,Item.unit,).filter(Item.data_id == current_user["data"]).all()
+        items_df = pd.DataFrame(items_data, columns=["item_id", "item_code", "Item Name", "Item Unit",])
+        inventory_stock_data = db.session.query(Inventory.item_id,db.func.sum(Inventory.qty).label("total_quantity"))\
+            .join(Item, Inventory.item_id == Item.id)\
+            .group_by(Inventory.item_id, Item.code, Item.name, Item.unit)\
+            .filter(Inventory.data_id == current_user["data"], Inventory.status == "ACTIVE").all()
+        wip_inventory_stock_data = db.session\
+            .query(Inventory.item_id,db.func.sum(Inventory.qty).label("total_quantity"))\
+            .join(Item, Inventory.item_id == Item.id)\
+            .group_by(Inventory.item_id, Item.code, Item.name, Item.unit)\
+            .filter(Inventory.data_id == current_user["data"], Inventory.status == "WIP").all()
+        reject_inventory_stock_data = db.session\
+            .query(Inventory.item_id,db.func.sum(Inventory.qty).label("total_quantity"))\
+            .join(Item, Inventory.item_id == Item.id)\
+            .group_by(Inventory.item_id, Item.code, Item.name, Item.unit)\
+            .filter(Inventory.data_id == current_user["data"], Inventory.status == "REJECT").all()
+        inventory_stock_df = pd.DataFrame(inventory_stock_data, columns=["item_id","total_stock" ])
+        wip_inventory_stock_df = pd.DataFrame(wip_inventory_stock_data, columns=["item_id","total_wip_stock" ])
+        reject_inventory_stock_df = pd.DataFrame(reject_inventory_stock_data, columns=["item_id","total_reject_stock" ])
+        inventory_stock_df = pd.merge(inventory_stock_df, items_df, left_on="item_id", right_on="item_id", how='right')
+        inventory_stock_df = pd.merge(inventory_stock_df,wip_inventory_stock_df, left_on='item_id', right_on='item_id', how="left")
+        inventory_stock_df = pd.merge(inventory_stock_df,reject_inventory_stock_df, left_on='item_id', right_on='item_id', how="left")
+        inventory_stock_df.fillna(0, inplace=True)
+        if item_filter == "yes":
+            if len(filters["filters_array"]) == 0:
+                inventory_stock_df = inventory_stock_df
+            elif len(items_df_filters.index) == 0:
+                inventory_stock_df = inventory_stock_df[0:0]
+            else:
+                print(inventory_stock_df.columns)
+                inventory_stock_df.drop(["item_code", "Item Name", "Item Unit"] ,inplace=True, axis=1)
+                inventory_stock_df = pd.merge(items_df_filters,inventory_stock_df, left_on="id", right_on="item_id", how="left")
+                inventory_stock_df["total_stock"].fillna(0, inplace=True)
+                inventory_stock_df["total_wip_stock"].fillna(0, inplace=True)
+                inventory_stock_df["total_reject_stock"].fillna(0, inplace=True)
+                inventory_stock_df["item_id"] = inventory_stock_df["id"]
+                inventory_stock_df.rename(columns = {"code":"item_code", "name":"Item Name", "unit":"Item Unit"}, inplace = True)
+                print(inventory_stock_df.columns)
+        if item_string:
+            inventory_stock_df = pd.merge(inventory_stock_df, items_df_search, left_on="item_id", right_on="id", how="inner")
+        if item_id:
+            print("REACHED")
+            inventory_stock_df = inventory_stock_df[inventory_stock_df['item_id'] == int(item_id)]
+            if data_type == "WIP":
+                inventory_stock_df['total_stock'] = inventory_stock_df['total_wip_stock']
+            elif data_type == "REJECT":
+                inventory_stock_df['total_stock'] = inventory_stock_df['total_reject_stock']
+        if stock_list == "excel":
+            inventory_stock_df = inventory_stock_df[["item_code", "Item Name", "Item Unit", "total_stock"]]
+            inventory_stock_df["new_stock"]=''
+            inventory_stock_df["note"]=''
+            file_name = f"{database.id}_stock_list.csv"
+            direct = os.path.join(os.getcwd(), 'downloads')
+            os.makedirs(direct, exist_ok=True)
+            file_path = os.path.join(direct, file_name)
+            inventory_stock_df.to_csv(file_path, index=False)
+            return send_from_directory(directory=direct, filename=file_name, as_attachment=True)
+        if stock_list == "pdf":
+            html_template = render_template("inventory/stock_list_template.html", inventory_dict =inventory_stock_df.to_dict(orient="records"))
+            file_name = f"{database.id}_stock_list.pdf"
+            direct = os.path.join(os.getcwd(), 'downloads')
+            file_path = os.path.join(direct, file_name)
+            path = '/usr/bin/wkhtmltopdf'
+            config = pdfkit.configuration(wkhtmltopdf=path)
+            pdfkit.from_string(html_template, file_path, configuration=config)
+            return send_from_directory(directory=direct, filename=file_name, as_attachment=True)
+        return jsonify(inventory_stock_df.to_dict(orient="records")), 200
+
+    
+    
+class stock_reconcilation(Resource):
+    @jwt_required
+    @requires_role(['INVENTORY'], 0)
+    def get(post):
+        current_user = get_jwt_identity()
+        database = Data.query.filter_by(id = current_user["data"]).first()
+        inventory_stock_data = db.session.query(Inventory.item_id,Item.code,Item.name,Item.unit,db.func.sum(Inventory.qty).label("total_quantity"))\
+            .join(Item, Inventory.item_id == Item.id).group_by(Inventory.item_id, Item.code, Item.name, Item.unit)\
+            .filter(Inventory.data_id == current_user["data"], Inventory.status=='ACTIVE').all()
+        inventory_stock_df = pd.DataFrame(inventory_stock_data, columns=["item_id","item_code", "Item Name", "Item Unit","total_stock" ])
+        return {"Data":inventory_stock_df.to_dict(orient="records")}, 200
+    
+    @jwt_required
+    @requires_role(["INVENTORY"], 0)
+    def post(self):
+        current_user = get_jwt_identity()
+        database = Data.query.filter_by(id = current_user["data"]).first()
+        req_json= request.get_json()
+        filter_type=req_json.get("filter_type")
+        filters_array = req_json.get("filters[]",[])
+        reconcile_flag = req_json.get("reconcile_flag", "NO")
+        item_ids = req_json.getlist("item_ids[]", [])
+        physical_stocks = req_json.getlist("physical_stocks[]", [])
+        notes = req_json.getlist("notes[]", [])
+        units = req_json.getlist("units[]", [])
+        if len(filters_array):
+            try:
+                body = {"k": -1,"filters":{"filters_array":filters_array, "filter_type":filter_type}}
+                items_dict = searchitemouter(-1, None, None,body["filters"],current_user['data'] )
+                items_df_filters = pd.DataFrame(items_dict)
+            except:
+                print("this is the error point")
+        inventory_stock_data = db.session.query(Inventory.item_id,Item.code,Item.name,Item.unit,db.func.sum(Inventory.qty).label("total_quantity"))\
+            .join(Item, Inventory.item_id == Item.id).group_by(Inventory.item_id, Item.code, Item.name, Item.unit)\
+            .filter(Inventory.data_id == current_user["data"], Inventory.status=='ACTIVE').all()
+        inventory_stock_df = pd.DataFrame(inventory_stock_data, columns=["item_id","item_code", "Item Name", "Item Unit","total_stock" ])
+        if len(filters_array) == 0:
+            inventory_stock_df = inventory_stock_df
+        elif len(items_df_filters.index) == 0:
+            inventory_stock_df = inventory_stock_df[0:0]
+        else:
+            inventory_stock_df.drop(["item_code", "Item Name", "Item Unit"] ,inplace=True, axis=1)
+            inventory_stock_df = pd.merge(items_df_filters,inventory_stock_df, left_on="id", right_on="item_id", how="left")
+            inventory_stock_df["total_stock"].fillna(0, inplace=True)
+            inventory_stock_df["item_id"].fillna("", inplace=True)
+            inventory_stock_df.rename(columns = {"code":"item_code", "name":"Item Name", "unit":"Item Unit"}, inplace = True)
+            print(inventory_stock_df.columns)
+        result = []
+        if reconcile_flag == "YES":
+            if not item_ids and not physical_stocks and not notes and not units:
+                return {"message":"reconcile Flag is Yes but no suiatable input found."}, 401
+            if len(item_ids) != len(physical_stocks) and len(item_ids) != len(notes) and len(item_ids) != len(units):
+                return {"message":"reconcile Flag is Yes but input length uneven."}, 401
+            for i in range(len(item_ids)):
+                item = Item.query.filter_by(database=database, id=int(item_ids[i])).first()
+                if item:
+                    try:
+                        system_stock = inventory_stock_df.loc[inventory_stock_df['item_id'] == item.id, 'total_stock'].values[0]
+                    except:
+                        system_stock = 0
+                    print("system_stocks:",system_stock)
+                    conv = get_conversion_factor(database, item, units[i])
+                    qty_adjust = (float(physical_stocks[i])/conv) - system_stock
+                    inventory = Inventory(item=item, database=database, qty = qty_adjust, note = notes[i]+f"_reconcilation_[{system_stock} to {float(physical_stocks[i])/conv} {item.unit}]", item_unit = item.unit)
+                    db.session.add(inventory)
+                    db.session.commit()
+            numbers_list = get_mobile_numbers(current_user["data"])
+            user = User.query.filter_by(id=current_user["user_id"]).first()
+            for number in numbers_list:
+                resp = SEND_MESSAGE(f"Stock reconcilation completed by {user.name}!", number)
+                result.append(f"Stock reconcilation completed by {user.name}!, message send to number : {number}")
+        return  {"DATA":inventory_stock_df.to_dict(orient="records"), "Reconcilation_result": result}, 200
+    

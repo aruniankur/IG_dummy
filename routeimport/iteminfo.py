@@ -198,23 +198,26 @@ class add_category_to_item(Resource):
         else:
             database = Data.query.filter_by(id=current_user["data"]).first()
             add_category_item_id = data.get("add_category_item_id")
-            add_category_id = data.get("add_category_id")
+            add_category_id_list = data.get("add_category_id_list",[])
 
-            if add_category_id and add_category_item_id:
-                try:
-                    item = Item.query.filter_by(database=database, id=add_category_item_id).first()
-                    category = Category.query.filter_by(database=database, id=add_category_id).first()
-                    item_cat = ItemCategory.query.filter_by(database=database, item=item, category=category).first()
-                    if item_cat:
-                        return {'message': 'Category already present in the item', 'item_id':item.id}, 401
-                    item_category = ItemCategory(database=database, item=item, category=category)
-                    db.session.add(item_category)
-                    db.session.commit()
-                    return {'message': 'Category added successfully' , 'item_id':item.id}, 200
-                except:
-                    return {'message':'check input'}, 401
+            if add_category_id_list and add_category_item_id:
+                res = []
+                for add_category_id in add_category_id_list:
+                    try:
+                        item = Item.query.filter_by(database=database, id=add_category_item_id).first()
+                        category = Category.query.filter_by(database=database, id=add_category_id).first()
+                        item_cat = ItemCategory.query.filter_by(database=database, item=item, category=category).first()
+                        if item_cat:
+                            res.append(f"Category already present in the item. item_id={item.id}")
+                        item_category = ItemCategory(database=database, item=item, category=category)
+                        db.session.add(item_category)
+                        db.session.commit()
+                        res.append(f"Category added successfully. item_id={item.id}")
+                    except:
+                        res.append(f"error occured in adding Category to item. item_id={item.id}")
+                return {'message': 'Categories added successfully' , 'result':res}, 200
             return {'message':'check input'}, 401
-        
+
         
 #----------------------------------------------------------------
 
@@ -428,6 +431,44 @@ class delete_unit(Resource):
         
 #----------------------------------------------------------------
 
+def searchitemouter(k, item_name, item_id, filters, data):
+    items = []
+    if filters:
+        try:
+            filters_list = filters["filters_array"]
+            filter_type = filters["filter_type"]
+            if filter_type == "inclusive":
+                items = db.session.query(Item).join(ItemCategory).filter(
+                        ItemCategory.category_id.in_(filters_list), Item.data_id == data).all()
+            else:
+                cat_count = len(filters_list)
+                items_filter = db.session.query(
+                    Item.id, db.func.count(ItemCategory.id).label("category_count")).join(
+                    Item, ItemCategory.item_id == Item.id).filter(
+                    Item.data_id == data, ItemCategory.category_id.in_(filters_list)).group_by(Item.id).all()
+                filter_df =pd.DataFrame(items_filter, columns=["id", "cat_count"])
+                filter_df = filter_df[filter_df["cat_count"] == cat_count]
+                items = db.session.query(Item).filter(Item.id.in_(filter_df["id"]), Item.data_id == data).all()
+        except:
+            print("Filters invalid")
+    if item_name:
+        if not filters:
+            items = (Item.query.filter(Item.data_id == data).all())
+        item_scores = [(item, compare_strings(item_name.lower(), item.name.lower(), item.code.lower())) for item in items]
+        item_scores.sort(key=lambda x: x[1], reverse=True)
+        if k>0:
+            top_k_matches = item_scores[:k]
+        else:
+            top_k_matches = item_scores
+        items = [match[0] for match in top_k_matches]
+    if item_id:
+        items = Item.query.filter_by(id =item_id, data_id = data).all()
+    results = [{'id': item.id,'name': item.name,'unit': item.unit,'rate': item.rate,'code': item.code,'raw_flag': item.raw_flag,
+                'itemfinance': {'cost_price': item.itemfinance.cost_price,'sale_price': item.itemfinance.sale_price,'tax': item.itemfinance.tax,'hsn_code': item.itemfinance.hsn_code
+                } if item.itemfinance else None} for item in items]
+    return results
+
+
 class search_item(Resource):
     @jwt_required()
     @requires_role(['BASIC'],0)
@@ -440,42 +481,7 @@ class search_item(Resource):
         item_name =req_json.get('name',None)
         item_id = req_json.get('id',None)
         filters = req_json.get('filters', None)
-        items=[]
-        print(filters)
-        if filters:
-            filters_list = filters["filters_array"]
-            filter_type = filters["filter_type"]
-            if filter_type == "inclusive":
-                items = db.session.query(Item).join(ItemCategory).filter(
-                    ItemCategory.category_id.in_(filters_list), Item.data_id == current_user["data"]).all()
-            else:
-                cat_count = len(filters_list)
-                items_filter = db.session.query(
-                    Item.id, db.func.count(ItemCategory.id).label("category_count")).join(
-                    Item, ItemCategory.item_id == Item.id).filter(
-                    Item.data_id == current_user["data"], ItemCategory.category_id.in_(filters_list)).group_by(
-                    Item.id).all()
-                filter_df =pd.DataFrame(items_filter, columns=["id", "cat_count"])
-                filter_df = filter_df[filter_df["cat_count"] == cat_count]
-                items = db.session.query(Item).filter(Item.id.in_(filter_df["id"]), Item.data_id == current_user["data"]).all()
-        if item_name:
-            print("item_name", item_name)
-            if not filters:
-                items = (Item.query.filter(Item.data_id == current_user["data"]).all())
-            item_scores = [(item, compare_strings(item_name.lower(), item.name.lower(), item.code.lower())) for item in items]
-            item_scores.sort(key=lambda x: x[1], reverse=True)
-            if k>0:
-                top_k_matches = item_scores[:k]
-            else:
-                top_k_matches = item_scores
-            items = [match[0] for match in top_k_matches]
-        if item_id:
-            items = Item.query.filter_by(id =item_id, data_id = current_user["data"]).all()
-        results = [
-            {   'id': item.id,'name': item.name,'unit': item.unit,'rate': item.rate,'code': item.code,'raw_flag': item.raw_flag,
-                'itemfinance': {'cost_price': item.itemfinance.cost_price,'sale_price': item.itemfinance.sale_price,'tax': item.itemfinance.tax,'hsn_code': item.itemfinance.hsn_code
-                } if item.itemfinance else None} for item in items]
-        #print(results)
+        results = searchitemouter(k, item_name, item_id, filters, current_user['data'])
         return results, 200
         
         
