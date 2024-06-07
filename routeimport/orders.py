@@ -29,30 +29,30 @@ class getorder(Resource):
     def get(self):
         current_user = get_jwt_identity()
         database = Data.query.filter_by(id = current_user["data"]).first()
-        show_flag_param = request.args.get("show_flag")
+        show_flag_param = request.args.get("show_flag", 'Active')
         if show_flag_param:
             show_flag = [show_flag_param]
         else:
             show_flag=['Active', 'Pending']
         ORDERS_DATA={}
-        orders = Order.query.filter_by(database=database, order_type=0).all()
+        orders = Order.query.filter_by(database=database, order_type=0, status=show_flag_param).all()
         for order in orders:
             ORDERS_DATA[order.id]={}
             ORDERS_DATA[order.id]["order"]=createjson(order)
             customer=Customer.query.filter_by(id=order.customer_id, database=database).first()
             ORDERS_DATA[order.id]["customer"]=createjson(customer)
-            ORDERS_DATA[order.id]["items"]=[]
-            ORDERS_DATA[order.id]["chart_items"]=[]
-            ORDERS_DATA[order.id]["invoices"] = {invoice.invoice_class: createjson(invoice) for invoice in order.invoice }
-            order_items = OrderItem.query.filter_by(order_id=order.id, database=database).all()
-            for order_item in order_items:
-                ORDERS_DATA[order.id]["items"].append(createjson(order_item))
-                ORDERS_DATA[order.id]["chart_items"].append([order_item.id, order_item.item.name, 
-                    order_item.order_qty, order_item.item.unit, 0, order_item.item.id])
-        items=Item.query.filter_by(database=database).all()
-        ITEMS=[]
-        for item in items:
-            ITEMS.append([item.id, item.name, item.rate, item.unit])
+            # ORDERS_DATA[order.id]["items"]=[]
+            # ORDERS_DATA[order.id]["chart_items"]=[]
+            # #ORDERS_DATA[order.id]["invoices"] = {invoice.invoice_class: createjson(invoice) for invoice in order.invoice }
+            # order_items = OrderItem.query.filter_by(order_id=order.id, database=database).all()
+            # for order_item in order_items:
+            #     ORDERS_DATA[order.id]["items"].append(createjson(order_item))
+            #     ORDERS_DATA[order.id]["chart_items"].append([order_item.id, order_item.item.name, 
+            #         order_item.order_qty, order_item.item.unit, 0, order_item.item.id])
+        # items=Item.query.filter_by(database=database).all()
+        # ITEMS=[]
+        # for item in items:
+        #     ITEMS.append([item.id, item.name, item.rate, item.unit])
         customers = Customer.query.filter_by(database=database).all()
         CUSTOMERS = []
         for customer in customers:
@@ -78,7 +78,7 @@ class getorder(Resource):
             print("Error in catching order_info")
         order_id_set = int(order_id_set)
         #print({"template_name":'orders_list_component_ui', "orders_data":ORDERS_DATA, "items" : ITEMS, "customers":CUSTOMERS, "show_flag":show_flag, "segment":segment, "TODAY" :datetime.date.today(), "order_info_html":order_info_html, "order_id_set":order_id_set, "categories":CATEGORIES})
-        return {"template_name":'orders_list_component_ui',"orders_data":ORDERS_DATA, "items" : ITEMS,"customers":CUSTOMERS, "show_flag":show_flag,
+        return {"template_name":'orders_list_component_ui',"orders_data":ORDERS_DATA,"customers":CUSTOMERS, "show_flag":show_flag,
                 "segment":segment, "TODAY" : str(datetime.date.today()), "order_info_html":order_info_html, "order_id_set":order_id_set, "categories":CATEGORIES}, 200
 
 
@@ -116,19 +116,24 @@ class deleteorder(Resource):
         if not delete_order_id:
             return {"message": "data not found. please check input"}, 401
         delete_order = Order.query.filter_by(database=database, id=delete_order_id).first()
-        delete_order_items = OrderItem.query.filter_by(database=database, order = delete_order).all()
-        for delete_item in delete_order_items:
-            if delete_item.inventory:
-                del_inventory = Inventory.query.filter_by(database=database, id=delete_item.inventory.id).first()
-                db.session.delete(del_inventory)
-            db.session.delete(delete_item)
+        if delete_order:
+            print(createjson(delete_order))
+            delete_order_items = OrderItem.query.filter_by(database=database, order = delete_order).all()
+            for delete_item in delete_order_items:
+                if delete_item.inventory:
+                    del_inventory = Inventory.query.filter_by(database=database, id=delete_item.inventory.id).first()
+                    db.session.delete(del_inventory)
+                db.session.delete(delete_item)
+                db.session.commit()
+            delete_order_invoices = Invoice.query.filter_by(database=database, order=delete_order).all()
+            for inv in delete_order_invoices:
+                db.session.delete(inv)
+            db.session.delete(delete_order)
             db.session.commit()
-        delete_order_invoices = Invoice.query.filter_by(database=database, order=delete_order).all()
-        for inv in delete_order_invoices:
-            db.session.delete(inv)
-        db.session.delete(delete_order)
-        return {"message":"order deleted successfully"}, 200
-    
+            return {"message":"order deleted successfully"}, 200
+        else:
+            return {"message":"order not found"}, 401
+        
     
 class dispatchorder(Resource):
     @jwt_required()
@@ -205,19 +210,20 @@ class bulkentry(Resource):
                 order.note = order_note
                 order.despdate = despdate
                 db.session.commit()
-            id_list = req_json.getlist("items_ids[]")
-            qty_list = req_json.getlist("items_qtys[]")
-            item_units = req_json.getlist("item_units[]")
-            chart_items_ids = req_json.getlist("chart_items_ids[]")
+            id_list = req_json.get("items_ids[]",None)
+            qty_list = req_json.get("items_qtys[]",None)
+            item_units = req_json.get("item_units[]",None)
+            chart_items_ids = req_json.get("chart_items_ids[]",None)
             add_type = req_json.get('add_type')
-            print(id_list)    
+            print(id_list, chart_items_ids)    
             order_items = OrderItem.query.filter_by(order = order, database=database).all()
-            order_items_df = pd.DataFrame(db.session.query(OrderItem.id,OrderItem.item_id,).filter(OrderItem.data_id == database.id, OrderItem.order_id == order.id).all(),columns=['order_item_id', 'item_id'])
+            order_items_df = pd.DataFrame(db.session.query(OrderItem.id,OrderItem.item_id,).filter(
+                OrderItem.data_id == database.id, OrderItem.order_id == order.id).all(),columns=['order_item_id', 'item_id'])
             old_order_item_ids_list = order_items_df['order_item_id'].tolist()
 
-            print(chart_items_ids, old_order_item_ids_list)
             if add_type and add_type == "ADDITION":
                 print("ADDITION TYPE")
+                
             for item in order_items:
                 if str(item.id) not in chart_items_ids:
                     if item.orderitemfinance:
@@ -362,6 +368,8 @@ class order_info(Resource):
         order_id = req_json.get("order_id", None)
         if order_id:
             order = Order.query.filter_by(database=database, id=order_id).first()
+            if not order:
+                return {"message": "no order found"} , 401
             delivery_batches = order.deliverybatches
             delivery_batch_ids = []
             for delivery_batch in delivery_batches:
@@ -369,9 +377,9 @@ class order_info(Resource):
                     delivery_batch_ids.append(delivery_batch.id)
             ORDERS_DATA={}
             ORDERS_DATA[order.id]={}
-            ORDERS_DATA[order.id]["order"]=order
+            ORDERS_DATA[order.id]["order"]=createjson(order)
             customer=Customer.query.filter_by(id=order.customer_id, database=database).first()
-            ORDERS_DATA[order.id]["customer"]=customer
+            ORDERS_DATA[order.id]["customer"]=createjson(customer)
             ORDERS_DATA[order.id]["items"]=[]
             ORDERS_DATA[order.id]["chart_items"]=[]
             ORDERS_DATA[order.id]["orderitemdispatch"]=[]
@@ -403,7 +411,6 @@ class order_info(Resource):
                 columns=['order_item_dispatch_id', 'dispatch_qty', 'delivery_batch_id', 'order_item_id']
                 )
             order_item_dispatch_df.dropna(inplace = True)
-            print(order_items_df, order_item_dispatch_df)
             order_data_df = pd.merge(order_items_df, order_item_dispatch_df, how='left', on='order_item_id')
             order_data_df =order_data_df.groupby('order_item_id').agg({'dispatch_qty':'sum', 'item_id':'first', 'order_qty':'first',
                 'delivery_batch_id':'first', 'item_unit':'first', 'order_item_id':'first'
@@ -415,23 +422,22 @@ class order_info(Resource):
             for _,order_item in order_data_df.iterrows():
                 print(order_item)
                 total_desp_qty = order_item.dispatch_qty
-                ORDERS_DATA[order.id]["items"].append(order_item)
+                ORDERS_DATA[order.id]["items"].append(createjson(order_item))
                 ORDERS_DATA[order.id]["chart_items"].append([order_item.order_item_id, order_item.item_name,order_item.order_qty, order_item.item_unit, total_desp_qty, order_item.item_id])
 
-            DATA["order_info"]=order
-            DATA["order_items"]=order_items
-            inventory_stock_data = db.session.query(
-                Inventory.item_id,
-                Item.name,
-                Item.unit,
-                db.func.sum(Inventory.qty).label("total_quantity")
-            ).join(
+            DATA["order_info"]=createjson(order)
+            DATA["order_items"]=createjson(order_items)
+            order_item_id = []
+            for i in order_items:
+                order_item_id.append(i.item_id)
+            inventory_stock_data = db.session.query(Inventory.item_id,Item.name,Item.unit,db.func.sum(Inventory.qty).label("total_quantity")).join(
             Item, Inventory.item_id == Item.id).group_by(
             Inventory.item_id, Item.name, Item.unit).filter(
-            Inventory.data_id == current_user["data"], Inventory.status == "ACTIVE").all()
+            Inventory.data_id == current_user["data"], Inventory.status == "ACTIVE", Inventory.item_id.in_(order_item_id)).all()
             inventory_stock_df = pd.DataFrame(inventory_stock_data, columns=["item_id", "Item Name", "Item Unit","total_stock" ])
             inventory_dict = inventory_stock_df.set_index("item_id").to_dict(orient="index")
-            return jsonify({"message":"Redirect", "uri": "order_info_component.html" ,"orders_data":ORDERS_DATA, "DATA": DATA, "TODAY":TODAY, "INVENTORY_DATA":inventory_dict }), 302
+            #print({"message":"Redirect", "uri": "order_info_component.html" ,"orders_data":ORDERS_DATA, "DATA": DATA, "TODAY":TODAY, "INVENTORY_DATA":inventory_dict })
+            return {"message":"Redirect", "uri": "order_info_component.html" ,"orders_data":ORDERS_DATA, "DATA": DATA, "TODAY":str(TODAY), "INVENTORY_DATA":inventory_dict }, 302
         return {"message": "no order id found"}, 200
     
     
@@ -499,6 +505,8 @@ class ordervalidation(Resource):
         approval = data.get("approval")
         if order_id and approval:
             order = Order.query.filter_by(database=database, id = order_id).first()
+            if not order:
+                return {"message":"order not found"}, 401
             if approval == "ACTIVE":
                 order.status = "Active"
                 order.active_date = datetime.date.today()
@@ -607,8 +615,17 @@ class addDeliveryBatch(Resource):
         batch_name = req_json.get('batch_name')
         desp_date = req_json.get('desp_date')
         order_id = req_json.get('order_id')
-        if batch_name and desp_date and order_id:
+        t = 0
+        if batch_name:
+            t = t + 1
+        if order_id:
+            t = t + 1
+        if desp_date:   
+            t = t + 1
+        if t == 3:
             order = Order.query.filter_by(id = order_id, database = database).first()
+            if not order:
+                return {"message":"no such order found"}, 401
             new_batch = DeliveryBatch(order=order, database=database, batch_name = batch_name, despdate = desp_date, actual_desp_date=desp_date, status="STORE")
             db.session.add(new_batch)
             db.session.commit()
@@ -620,7 +637,7 @@ class addDeliveryBatch(Resource):
                 create_invoices(database.id, order.id, 'delivery-slip', [new_batch.id])
             else:
                 create_invoices(database.id, order.id, 'receive-slip', [new_batch.id])
-            {"messages":"added successfully", "id": new_batch.id}, 200
+            return {"messages":"added successfully", "id": new_batch.id}, 200
         return {"message":"no order id or batch name or desp date found"}, 401
     
 

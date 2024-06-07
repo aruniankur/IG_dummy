@@ -84,7 +84,7 @@ def create_invoices(data_id, new_order_id, invoice_class, delivery_batch_ids=[])
             prof_invoice = Invoice(database=database, order=order, invoice_number=prof_invoice_number,invoice_class="proforma-invoice", invoice_date=new_order_desp_date)
             db.session.add(prof_invoice)
             db.session.commit()
-            prof_invoice.invoice_html= jsonify(uri=invoice_config_dict["proforma-invoice"]["invoice-file"], ORDER = order, ORDER_ITEMS=[], invoice=prof_invoice, tax_exclusive_price_flag="NO", intra_state_gst_flag ="YES")
+            #prof_invoice.invoice_html= jsonify(uri=invoice_config_dict["proforma-invoice"]["invoice-file"], ORDER = order, ORDER_ITEMS=[], invoice=prof_invoice, tax_exclusive_price_flag="NO", intra_state_gst_flag ="YES")
             db.session.commit()
             return {"message" : prof_invoice.id }, 200 
         
@@ -105,7 +105,7 @@ def create_invoices(data_id, new_order_id, invoice_class, delivery_batch_ids=[])
 
             delivery_batch.invoice = delivery_slip
             db.session.commit()
-            delivery_slip.invoice_html = jsonify(uri=invoice_config_dict["delivery-slip"]["invoice-file"], ORDER = order, ORDER_ITEMS=[], invoice=delivery_slip, DELIVERY_BATCH = delivery_batch)
+            #delivery_slip.invoice_html = jsonify(uri=invoice_config_dict["delivery-slip"]["invoice-file"], ORDER = order, ORDER_ITEMS=[], invoice=delivery_slip, DELIVERY_BATCH = delivery_batch)
             db.session.commit()
             return {"message" : delivery_slip.id }, 200
         
@@ -121,7 +121,7 @@ def create_invoices(data_id, new_order_id, invoice_class, delivery_batch_ids=[])
             sales_invoice = Invoice(database=database, order_id=order.id, invoice_number=invoice_number, invoice_class="purchase-invoice", invoice_date=new_order_desp_date)
             db.session.add(sales_invoice)
             db.session.commit()
-            sales_invoice.invoice_html= jsonify(uri=invoice_config_dict["purchase-invoice"]["invoice-file"], ORDER = order, ORDER_ITEMS=[], invoice=sales_invoice)
+            #sales_invoice.invoice_html= jsonify(uri=invoice_config_dict["purchase-invoice"]["invoice-file"], ORDER = order, ORDER_ITEMS=[], invoice=sales_invoice)
             db.session.commit()
         elif invoice_class == 'purchase-order':
             prof_invoice_count = len(Invoice.query.filter_by(database=database, invoice_class="purchase-order").all()) + 1
@@ -134,7 +134,7 @@ def create_invoices(data_id, new_order_id, invoice_class, delivery_batch_ids=[])
             prof_invoice = Invoice(database=database, order=order, invoice_number=prof_invoice_number,invoice_class="purchase-order", invoice_date=new_order_desp_date)
             db.session.add(prof_invoice)
             db.session.commit()
-            prof_invoice.invoice_html= jsonify(uri=invoice_config_dict["purchase-order"]["invoice-file"], ORDER = order, ORDER_ITEMS=[], invoice=prof_invoice)
+            #prof_invoice.invoice_html= jsonify(uri=invoice_config_dict["purchase-order"]["invoice-file"], ORDER = order, ORDER_ITEMS=[], invoice=prof_invoice)
             db.session.commit()
         elif invoice_class == 'receive-slip':
             delivery_batch_id = delivery_batch_ids[0]
@@ -152,7 +152,7 @@ def create_invoices(data_id, new_order_id, invoice_class, delivery_batch_ids=[])
             db.session.commit()
             delivery_batch.invoice = delivery_slip
             db.session.commit()
-            delivery_slip.invoice_html = jsonify(uri=invoice_config_dict["receive-slip"]["invoice-file"], ORDER = order, ORDER_ITEMS=[], invoice=delivery_slip, DELIVERY_BATCH = delivery_batch)
+            #delivery_slip.invoice_html = jsonify(uri=invoice_config_dict["receive-slip"]["invoice-file"], ORDER = order, ORDER_ITEMS=[], invoice=delivery_slip, DELIVERY_BATCH = delivery_batch)
             db.session.commit()
             
 
