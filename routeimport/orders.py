@@ -24,7 +24,7 @@ def get_conversion_factor(database, item, unit_name):
     return 1
 
 class getorder(Resource):
-    @jwt_required
+    @jwt_required()
     @requires_role(["ORDERS"], 0)
     def get(self):
         current_user = get_jwt_identity()
@@ -38,15 +38,15 @@ class getorder(Resource):
         orders = Order.query.filter_by(database=database, order_type=0).all()
         for order in orders:
             ORDERS_DATA[order.id]={}
-            ORDERS_DATA[order.id]["order"]=order
+            ORDERS_DATA[order.id]["order"]=createjson(order)
             customer=Customer.query.filter_by(id=order.customer_id, database=database).first()
-            ORDERS_DATA[order.id]["customer"]=customer
+            ORDERS_DATA[order.id]["customer"]=createjson(customer)
             ORDERS_DATA[order.id]["items"]=[]
             ORDERS_DATA[order.id]["chart_items"]=[]
-            ORDERS_DATA[order.id]["invoices"] = {invoice.invoice_class: invoice for invoice in order.invoice }
+            ORDERS_DATA[order.id]["invoices"] = {invoice.invoice_class: createjson(invoice) for invoice in order.invoice }
             order_items = OrderItem.query.filter_by(order_id=order.id, database=database).all()
             for order_item in order_items:
-                ORDERS_DATA[order.id]["items"].append(order_item)
+                ORDERS_DATA[order.id]["items"].append(createjson(order_item))
                 ORDERS_DATA[order.id]["chart_items"].append([order_item.id, order_item.item.name, 
                     order_item.order_qty, order_item.item.unit, 0, order_item.item.id])
         items=Item.query.filter_by(database=database).all()
@@ -68,20 +68,22 @@ class getorder(Resource):
             order_id_set = order.id
         params = {'order_id': order_id_set}
         orderinfo = order_info()
+        order_info_html = ''
         try:
             orderinfo_post_response =orderinfo.post(params)
+            if orderinfo_post_response:
+                if 200 in orderinfo_post_response:
+                    order_info_html = orderinfo_post_response['html']
         except:
             print("Error in catching order_info")
-        order_info_html = ''
-        if orderinfo_post_response:
-            if 200 in orderinfo_post_response:
-                order_info_html = orderinfo_post_response['html']
         order_id_set = int(order_id_set)
-        return {"template_name":'orders_list_component_ui', "orders_data":ORDERS_DATA, "items" : ITEMS, "customers":CUSTOMERS, "show_flag":show_flag, "segment":segment, "TODAY" :datetime.date.today(), "order_info_html":order_info_html, "order_id_set":order_id_set, "categories":CATEGORIES}, 200
+        #print({"template_name":'orders_list_component_ui', "orders_data":ORDERS_DATA, "items" : ITEMS, "customers":CUSTOMERS, "show_flag":show_flag, "segment":segment, "TODAY" :datetime.date.today(), "order_info_html":order_info_html, "order_id_set":order_id_set, "categories":CATEGORIES})
+        return {"template_name":'orders_list_component_ui',"orders_data":ORDERS_DATA, "items" : ITEMS,"customers":CUSTOMERS, "show_flag":show_flag,
+                "segment":segment, "TODAY" : str(datetime.date.today()), "order_info_html":order_info_html, "order_id_set":order_id_set, "categories":CATEGORIES}, 200
 
 
 class addorder(Resource):
-    @jwt_required
+    @jwt_required()
     @requires_role(['ORDERS'], 0)
     def post(self):
         current_user = get_jwt_identity()
@@ -104,7 +106,7 @@ class addorder(Resource):
         
         
 class deleteorder(Resource):
-    @jwt_required
+    @jwt_required()
     @requires_role(['ORDERS'], 1)
     def post(self):
         current_user = get_jwt_identity()
@@ -129,7 +131,7 @@ class deleteorder(Resource):
     
     
 class dispatchorder(Resource):
-    @jwt_required
+    @jwt_required()
     @requires_role(['ORDERS'],0)
     def post(self):
         current_user = get_jwt_identity()
@@ -186,7 +188,7 @@ class dispatchorder(Resource):
             return {"message":"order dispatch successfully", "order_id": new_order.id}, 200
         
 class bulkentry(Resource):
-    @jwt_required
+    @jwt_required()
     @requires_role(['ORDERS'],1)
     def post(self):
         current_user = get_jwt_identity()
@@ -269,7 +271,7 @@ class bulkentry(Resource):
             return {"message":"bulk order added"}, 200
 
 class addorderitem(Resource):
-    @jwt_required
+    @jwt_required()
     @requires_role(['ORDERS'],1)
     def post(self):
         current_user = get_jwt_identity()
@@ -299,7 +301,7 @@ class addorderitem(Resource):
 existing_qty=0
 
 class editorderitem(Resource):
-    @jwt_required
+    @jwt_required()
     @requires_role(['ORDERS'],1)
     def post(self):
             current_user = get_jwt_identity()
@@ -326,7 +328,7 @@ class editorderitem(Resource):
             
     
 class deleteorderitem(Resource):
-    @jwt_required
+    @jwt_required()
     @requires_role(['ORDERS'], 1)
     def post(self):
         current_user = get_jwt_identity()
@@ -346,7 +348,7 @@ class deleteorderitem(Resource):
     
 
 class order_info(Resource):
-    @jwt_required
+    @jwt_required()
     @requires_role(["ORDERS"],0)
     def post(self, req_json = None):
         current_user = get_jwt_identity()
@@ -434,7 +436,7 @@ class order_info(Resource):
     
     
 class order_sheet(Resource):
-    @jwt_required
+    @jwt_required()
     @requires_role(['ORDER'], 0)
     def post(self):
         current_user = get_jwt_identity()
@@ -487,7 +489,7 @@ class order_sheet(Resource):
     
     
 class ordervalidation(Resource):
-    @jwt_required
+    @jwt_required()
     @requires_role(['ORDER'], 0)
     def post(self):
         current_user = get_jwt_identity()
@@ -511,7 +513,7 @@ class ordervalidation(Resource):
 
         
 class get_order_breakup(Resource):
-    @jwt_required
+    @jwt_required()
     @requires_role(['ORDER'], 2)
     def post(self):
         current_user = get_jwt_identity()
@@ -532,7 +534,7 @@ class get_order_breakup(Resource):
     
     
 class get_demand_breakup(Resource):
-    @jwt_required
+    @jwt_required()
     @requires_role(['ORDER'], 0)
     def post(self):
         current_user = get_jwt_identity()
@@ -580,7 +582,7 @@ class get_demand_breakup(Resource):
     
     
 class updateDeliveryBatchInvoice(Resource):
-    @jwt_required
+    @jwt_required()
     @requires_role(['ORDERS'], 0)
     def get(self):
         current_user = get_jwt_identity()
@@ -596,7 +598,7 @@ class updateDeliveryBatchInvoice(Resource):
     
 
 class addDeliveryBatch(Resource):
-    @jwt_required
+    @jwt_required()
     @requires_role(['ORDERS'], 0)
     def post(self):
         current_user = get_jwt_identity()
@@ -623,7 +625,7 @@ class addDeliveryBatch(Resource):
     
 
 class generateInvoice(Resource):
-    @jwt_required
+    @jwt_required()
     @requires_role(["ORDERS"], 0)
     def post(self):
         current_user = get_jwt_identity()
@@ -640,7 +642,7 @@ class generateInvoice(Resource):
 
 
 class dispatchchallan(Resource):
-    @jwt_required
+    @jwt_required()
     @requires_role(['ORDERS'], 0)
     def post(self):
         current_user = get_jwt_identity()

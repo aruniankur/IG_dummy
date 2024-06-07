@@ -594,7 +594,437 @@ class deletejobtoworkstation(Resource):
             return {'message': 'Record Deleted successfully', "record_id":-1, "workstation_id": ws_id, "date_allot":date_allot}, 200
         return {"Message": "Check Input"}, 401
 
+
+class workstation_chart_api(Resource):
+    @jwt_required()
+    @requires_role(["WORKSTATION"], 0)
+    def post(self):
+        current_user = get_jwt_identity()
+        database=Data.query.filter_by(id = current_user["data"]).first()
+        req_json = request.get_json()
+        ws_id = req_json.get("ws_id", None)
+        ws_date = req_json.get("ws_date", None)
+        print(ws_id, ws_date)
+        if ws_id and ws_date:
+            DATA={}
+            workstation = Workstation.query.filter_by(database=database, id =ws_id).first()
+            if workstation:
+                parent_ws = workstation.workstation_childs[0].parent_ws
+                a, ws_dict_parent, c = get_total_jobs(parent_ws, ws_date)
+                keys_to_keep=['totals', 'recv_totals']
+                jobs_breakup = {parent_ws.id: {key: ws_dict_parent[parent_ws.id][key] for key in keys_to_keep if key in ws_dict_parent[parent_ws.id]}}
+
+                ws_dict = ws_dict_parent[parent_ws.id]["childs"]
+                child_jobs = WorkstationJob.query.filter_by(database=database, workstation=workstation, date_allot=ws_date).all()
+                child_resources = WorkstationResource.query.filter_by(database=database, workstation=workstation, date_allot=ws_date).all()
+                DATA[workstation.id] = {"date": ws_date, "note":workstation.name, "chart_items":[], "job_work_totals":ws_dict[workstation.id]["job_work_totals"],
+                "capacity_totals":ws_dict[workstation.id]["capacity_totals"], "parent_job_items":[]}
+                # DATA[workstation.id]["ws_jobs"]=child_jobs
+                for child_job in child_jobs:
+                    DATA[workstation.id]["chart_items"].append([child_job.id, child_job.item.name, 
+                        ws_dict[workstation.id]["totals"][child_job.item.id], child_job.item.unit, 0, child_job.item.id])
+                DATA[workstation.id]["chart_resources"] = []
+                for child_res in child_resources:
+                    DATA[workstation.id]["chart_resources"].append([child_res.id, child_res.labor.name, 
+                        child_res.time_allot,child_res.contract_mode, 0, child_res.labor.id])
+                parent_jobs = WorkstationJob.query.filter_by(database=database, date_allot=ws_date, workstation = parent_ws).all()
+                for parent_job in parent_jobs:
+                    DATA[workstation.id]["parent_job_items"].append([parent_job.id, parent_job.item.name, parent_job.qty_allot,
+                        ws_dict_parent[parent_ws.id]["totals"][parent_job.item.id], parent_job.item.unit, ws_dict_parent[parent_ws.id]["recv_totals"][parent_job.item.id], parent_job.item.id])
+                return jsonify(DATA)
+        return {"Message":"Error!"}, 401
+
+class workstation_chart_edits(Resource):
+    @jwt_required()
+    @requires_role(["WORKSTATION"],0)
+    def post(self):
+        current_user = get_jwt_identity()
+        req_json= request.get_json()
+        ws_id = req_json.get("workstation_id", None)
+        item_id= req_json.get("item_id", None)
+        qty_allot= req_json.get("qty_allot", None)
+        date_allot= req_json.get("date_allot", None)
+        if ws_id and item_id and qty_allot and date_allot:
+            database = Data.query.filter_by(id = current_user["data"]).first()
+            qty_allot=float(qty_allot)
+            ## Getting required masters
+            item = Item.query.filter_by(database=database, id = item_id).first()
+            workstation = Workstation.query.filter_by(database=database, id = ws_id).first()
+            job_inventory = Inventory(item=item, item_unit = item.unit, qty = 0, note=f"Receipt_{workstation.name}_{date_allot}", database=database, regdate=date_allot)
+            db.session.add(job_inventory)
+            db.session.commit()
+            ## Adding Workstation Job
+            ws_job = WorkstationJob(database=database, workstation=workstation, qty_allot = qty_allot, date_allot=date_allot, item=item, inventory=job_inventory)
+            db.session.add(ws_job)
+            db.session.commit()
+            updateParentJobs(database.id, workstation.id, item.id, date_allot)
+            ## Getting the parent ws_job
+            parent_ws = WorkstationMapping.query.filter_by(database=database, child_ws=workstation).first().parent_ws
+            parent_job = WorkstationJob.query.filter_by(database=database, workstation=parent_ws, date_allot = date_allot, item=item).first()
+            if parent_job:
+                parent_job.qty_allot = max(0, parent_job.qty_allot-qty_allot)
+            db.session.commit()
+            updateMaterialIssue(workstation, date_allot)
+            return jsonify({'message': 'Record added successfully', "record_id":ws_job.id})
+        return {"Message":"error in input"}, 401
+    
+class set_ws_item_category(Resource):
+    @jwt_required()
+    @requires_role(["WORKSTATION"], 0)
+    def post(self):
+        current_user = get_jwt_identity()
+        data = request.get_json()
+        database = Data.query.filter_by(id=current_user["data"]).first()
+        filter_type = data.get("filter_type")
+        filters = data.get("filters[]",[])
+        ws_id = request.args.get("ws_id")
+        if len(filters) and filter_type and ws_id:
+            workstation = Workstation.query.filter_by(database=database, id=ws_id).first()
+            category_config_dict = json.loads(workstation.category_config)
+            if not category_config_dict.keys():
+                category_config_dict["item_categories"] = {}
+            category_config_dict["item_categories"] = {"filter_type": filter_type, "filters_array": filters}
+            workstation.category_config = json.dumps(category_config_dict)
+            return {"message":"Successfully updated categories!"}, 200
+        else:
+            return {"message":"Invalid request! check input"}, 401
+    
+class workstationsBulkEntry(Resource):
+    @jwt_required()
+    @requires_role(["WORKSTATION"], 0)
+    def post(self):
+        current_user = get_jwt_identity()
+        data = request.get_json()
+        database = Data.query.filter_by(id=current_user["data"]).first()
+        add_items_check = data.get("add_items_check")
+        workstation_id = data.get("chart_id")
+        workstation_date = data.get("chart_date")
+        date_allot = workstation_date
+        if add_items_check and workstation_id and workstation_date:
+            res = []
+            workstation = Workstation.query.filter_by(id = workstation_id, database = database).first()    
+            workstation_jobs = WorkstationJob.query.filter_by(workstation = workstation, database=database, date_allot = workstation_date).all()
+            id_list = data.getlist("items_ids[]")
+            qty_list = data.getlist("items_qtys[]")
+            qty_list = [float(qty) for qty in qty_list]
+            df = pd.DataFrame({'ID': id_list, 'Qty': qty_list})
+            result_df = df.groupby('ID')['Qty'].sum().reset_index()
+            id_list = result_df['ID'].tolist()
+            qty_list = result_df['Qty'].tolist()
+            parent_ws = WorkstationMapping.query.filter_by(database=database, child_ws=workstation).first().parent_ws
+            a, ws_dict_parent, c = get_total_jobs(parent_ws, workstation_date)
+            ws_dict = ws_dict_parent[parent_ws.id]["childs"]
+            for ws_job_item in workstation_jobs:
+                if str(ws_job_item.item.id) not in id_list:
+                    if checkChildJobs(database.id, workstation.id, ws_job_item.item.id, workstation_date):
+                        res.append(f"Item Present in Child WS!! Failed to Delete {ws_job_item.item.name} in {workstation.name}")
+                        continue
+                    if ws_job_item.wipinventory:
+                        db.session.delete(ws_job_item.wipinventory)
+                    db.session.delete(ws_job_item.inventory)
+                    db.session.delete(ws_job_item)
+            for i in range(len(id_list)):
+                item = Item.query.filter_by(id =id_list[i], database=database).first()
+                ws_job_check = WorkstationJob.query.filter_by(database=database, workstation=workstation, item=item, date_allot = workstation_date).first()
+                parent_job = WorkstationJob.query.filter_by(database=database, workstation=parent_ws, date_allot = workstation_date, item=item).first()
+                if ws_job_check:
+                    prev_qty = ws_job_check.qty_allot
+                    diff = float(qty_list[i]) -  ws_dict[workstation.id]["totals"][ws_job_check.item.id]
+                    ws_job_check.qty_allot += diff
+                    db.session.commit()
+                    print("Existing Item Found!!")
+                    if parent_job:
+                        parent_job.qty_allot = max(0, parent_job.qty_allot-diff)
+                    else:
+                        parent_job = WorkstationJob(database=database, item=item, date_allot=workstation_date, workstation=parent_ws, qty_allot=0)
+                        db.session.add(parent_job)
+                        db.session.commit()
+                        updateMaterialIssue(parent_job.workstation, date_allot)
+                else:
+                    print("New Item Found!!")
+                    job_inventory = Inventory(item=item,regdate=workstation_date, item_unit = item.unit, qty = 0, note=f"Receipt_{workstation.name}_{workstation_date}", database=database)
+                    db.session.add(job_inventory)
+                    db.session.commit()
+                    ws_job = WorkstationJob(database=database, item=item, date_allot =workstation_date, qty_allot = float(qty_list[i]), workstation=workstation,
+                        inventory = job_inventory)
+                    db.session.add(ws_job)
+                    db.session.commit()
+                    updateParentJobs(database.id, workstation.id, item.id, date_allot)
+                    if parent_job:
+                        parent_job.qty_allot = max(0, parent_job.qty_allot-qty_list[i]) 
+                    else:
+                        parent_job = WorkstationJob(database=database, item=item, date_allot=workstation_date, workstation=parent_ws, qty_allot=0)
+                        db.session.add(parent_job)
+                        db.session.commit()
+                        updateMaterialIssue(parent_job.workstation, date_allot)
+                db.session.commit()
+            updateMaterialIssue(workstation, date_allot)
+            return {"Message":"Success", "flash_message":res}, 200
+        return {"Message":"Check Input"}, 401
+
+
+class workstationReceive(Resource):
+    @jwt_required()
+    @requires_role(["WORKSTATION"], 0)
+    def post(self):
+        current_user = get_jwt_identity()
+        data = request.get_json()
+        database = Data.query.filter_by(id=current_user["data"]).first()
+        ws_recv_flag = data.get("ws_receive_flag")
+        ws_id = data.get("ws_id")
+        ws_date = data.get("ws_date")
+        if ws_recv_flag and ws_id and ws_date:
+            ws_job_ids = data.get("job_ids[]",[])
+            ws_recv_qtys = data.get("recv_qtys[]",[])
+            ws_wip_qtys = data.get("wip_qtys[]",[])
+            ws_reject_qtys = data.get("reject_qtys[]",[])
+            if len(ws_job_ids)*3 == len(ws_recv_qtys)+ len(ws_wip_qtys) + len(ws_reject_qtys):
+                for i in range(len(ws_job_ids)):
+                    ws_job = WorkstationJob.query.filter_by(database=database, id=ws_job_ids[i]).first()
+                    ws_job.qty_recv = ws_recv_qtys[i]
+                    ws_job.qty_wip = ws_wip_qtys[i]
+                    ws_job.qty_reject = ws_reject_qtys[i]
+                    if ws_job.inventory:
+                        ws_job.inventory.qty = ws_recv_qtys[i]
+                    else:
+                        new_inventory = Inventory(database=database, item=ws_job.item, item_unit=ws_job.item.unit, qty=ws_recv_qtys[i], note=f"Receipt_{ws_job.workstation.name}_{ws_job.date_allot}", regdate=ws_job.date_allot)
+                        db.session.add(new_inventory)
+                        db.session.commit()
+                        ws_job.inventory = new_inventory
+                    if ws_job.wipinventory:
+                        ws_job.wipinventory.qty= ws_wip_qtys[i]
+                    else:
+                        new_wip_inventory = Inventory(database=database, item=ws_job.item, item_unit=ws_job.item.unit, qty=ws_wip_qtys[i], note=f"WIP_Receipt_{ws_job.workstation.name}_{ws_job.date_allot}",
+                        regdate=ws_job.date_allot, status = "WIP")
+                        db.session.add(new_wip_inventory)
+                        db.session.commit()
+                        ws_job.wipinventory = new_wip_inventory
+                    if ws_job.rejectinventory:
+                        ws_job.rejectinventory.qty= ws_reject_qtys[i]
+                    else:
+                        new_reject_inventory = Inventory(database=database, item=ws_job.item, item_unit=ws_job.item.unit, qty=ws_reject_qtys[i], note=f"REJECT_Receipt_{ws_job.workstation.name}_{ws_job.date_allot}",
+                        regdate=ws_job.date_allot, status = "REJECT")
+                        db.session.add(new_reject_inventory)
+                        db.session.commit()
+                        ws_job.rejectinventory = new_reject_inventory
+                    db.session.commit()
+            ## Update Material Issues for Auto Consumption Items
+            autoMaterialIssue(ws_id, ws_date, database.id)
+            workstation = Workstation.query.filter_by(database=database, id = ws_id).first()
+            primary_workstation = Workstation.query.filter_by(database=database, id = session["workstation_id"]).first()
+            numbers_list = get_mobile_numbers(session["data"])
+            user = User.query.filter_by(id=session["user_id"]).first()
+            for number in numbers_list:
+                if workstation.id != primary_workstation.id:
+                    resp = SEND_CUSTOM_MESSAGE(f"Production Received for {workstation.name} by {user.name}!", number)
+                else:
+                    resp = SEND_CUSTOM_MESSAGE(f"Production Received for PRIMARY WORKSTATION by {user.name}!", number)
+            return redirect(request.headers.get('Referer', '/')) 
+        ws_material_receive_flag = data.get("ws_material_receive_flag")
+        print(ws_material_receive_flag)
+        if ws_material_receive_flag:
+            issue_job_ids = data.get("issue_job_ids[]",[])
+            issue_qtys = data.get("issue_qtys[]",[])
+            return_qtys = data.get("return_qtys[]",[])
+            reject_qtys = data.get("reject_qtys[]",[])
+            issue_units = data.get("issue_units[]",[])
+            print(issue_job_ids, issue_qtys, return_qtys, reject_qtys, issue_units)
+            if len(issue_job_ids)+ len(issue_qtys) +len(return_qtys) + len(reject_qtys) + len(issue_units) == 5*len(issue_job_ids):
+                for i in range(len(issue_job_ids)):
+                    ws_issue = WSMaterialIssue.query.filter_by(database=database, id=issue_job_ids[i]).first()
+                    conv_factor = get_conversion_factor(database, ws_issue.item, issue_units[i])
+                    try:
+                        ws_issue.issue_qty = float(issue_qtys[i])/conv_factor
+                    except:
+                        flash(f"Problem in issue qty for {ws_issue.item.name}, passed value {issue_qtys[i]}", "danger")
+                    try:
+                        ws_issue.return_qty =float(return_qtys[i])/conv_factor
+                    except:
+                        flash(f"Problem in issue qty for {ws_issue.item.name}, passed value {return_qtys[i]}", "danger")
+                    try:
+                        ws_issue.reject_qty =float(reject_qtys[i])/conv_factor
+                    except:
+                        flash(f"Problem in issue qty for {ws_issue.item.name}, passed value {reject_qtys[i]}", "danger")
+                    db.session.commit()
+                    if ws_issue.item.iteminventory:
+                        if ws_issue.item.iteminventory.consumption_mode == "MANUAL":
+                            ws_issue.inventory.qty = (-1*( float(ws_issue.issue_qty) - float(ws_issue.return_qty) ))
+                    if ws_issue.rejectinventory:
+                        ws_issue.rejectinventory.qty= float(reject_qtys[i])/conv_factor
+                    else:
+                        new_reject_inventory = Inventory(database=database, item=ws_issue.item, item_unit=ws_issue.item.unit, qty=float(reject_qtys[i])/conv_factor, note=f"REJECT_Receipt_{ws_issue.workstation.name}_{ws_issue.date_issue}",
+                        regdate=ws_issue.date_issue, status = "REJECT")
+                        db.session.add(new_reject_inventory)
+                        db.session.commit()
+                        ws_issue.rejectinventory = new_reject_inventory
+                    db.session.commit()
+
+                numbers_list = get_mobile_numbers(session["data"])
+                user = User.query.filter_by(id=session["user_id"]).first()
+                for number in numbers_list:
+                    resp = SEND_CUSTOM_MESSAGE(f"Material Quantities Issued in workstation by {user.name}!", number)
+                flash("Material Issue Quantities Changed and Inventory Updated..", "success")
+            return redirect(request.headers.get('Referer', '/'))        
+        return redirect(request.headers.get('Referer', '/'))
+
+
+class generate_slips(Resource):
+    @jwt_required()
+    @requires_role(["WORKSTATION"], 0)
+    def post(self):
+        current_user = get_jwt_identity()
+        data = request.get_json()
+        database = Data.query.filter_by(id=current_user["data"]).first()
+        slip_type = Data.get("slip_type")
+        ws_date = Data.get("ws_date")
+        ws_id = Data.get("ws_id")
+        if slip_type and ws_date and ws_id:
+            workstation = Workstation.query.filter_by(database=database, id = ws_id).first()
+            ws_resources = workstation.workstationresources
+            ws_resource_string = " ".join([ws_resource.labor.name for ws_resource in ws_resources])
+            if slip_type == "products":
+                ws_jobs = WorkstationJob.query.filter_by(database=database,workstation=workstation, date_allot = ws_date).all()
+
+                return render_template("workstations/product_receive_slip.html", WS_JOBS = ws_jobs, WS_RESOURCE_STRING={workstation.id:ws_resource_string})
+            if slip_type == "materials":
+                ws_issues = WSMaterialIssue.query.filter_by(database=database, workstation=workstation, date_issue = ws_date).all()
+                return render_template("workstations/material_issue_slip.html", WS_ISSUES = ws_issues, WS_RESOURCE_STRING={workstation.id:ws_resource_string}, list_size = len(ws_issues))
+            if slip_type == "products_child":
+                child_maps = WorkstationMapping.query.filter_by(database=database, parent_ws = workstation).all()
+                # print(childs)
+                ws_jobs=[]
+                ws_resource_string={}
+                for child_map in child_maps:
+                    ws_jobs += WorkstationJob.query.filter_by(database=database,workstation=child_map.child_ws, date_allot = ws_date).all()
+                    child_ws_resources = WorkstationResource.query.filter_by(database=database, workstation=child_map.child_ws, date_allot = ws_date).all()
+                    ws_resource_string[child_map.child_ws.id] = ",".join([ws_resource.labor.name for ws_resource in child_ws_resources])
+                print(ws_resource_string)
+                return render_template("workstations/product_receive_slip.html", WS_JOBS = ws_jobs, WS_RESOURCE_STRING=ws_resource_string)
+            if slip_type == "materials_child":
+                
+                child_maps = WorkstationMapping.query.filter_by(database=database, parent_ws = workstation).all()
+                # print(childs)
+                ws_issues=[]
+                ws_resource_string={}
+                for child_map in child_maps:
+                    ws_issues += WSMaterialIssue.query.filter_by(database=database, workstation=child_map.child_ws, date_issue = ws_date).all()
+                    child_ws_resources = WorkstationResource.query.filter_by(database=database, workstation=child_map.child_ws, date_allot = ws_date).all()
+                    ws_resource_string[child_map.child_ws.id] = ",".join([ws_resource.labor.name for ws_resource in child_ws_resources])
+                    print(ws_resource_string)
+                return render_template("workstations/material_issue_slip.html", WS_ISSUES = ws_issues, WS_RESOURCE_STRING=ws_resource_string, list_size = len(ws_issues))
+
+
+class workstationConfig(Resource):
+    @jwt_required()
+    @requires_role(["WORKSTATION"], 0)
+    def post(self):
+        current_user = get_jwt_identity()
+        database = Data.query.filter_by(id = current_user["data"]).first()
+        data = request.get_json()
+        date = data.get("date")
+        UpdateWorkstationPreferences(database.id, date)
+        return redirect(f"/workstations?date={date}")
+
+class fg_btp_recv(Resource):
+    @jwt_required()
+    @requires_role(["BASIC"],0)
+    def post(self):
+        current_user = get_jwt_identity()
+        database = Data.query.filter_by(id = current_user["data"]).first()
+        data = request.get_json()
+        ws_ids = request.form.getlist("ws_ids[]")
+        items_ids = request.form.getlist("items_ids[]")
+        items_units = request.form.getlist("items_units[]")
+        items_qtys = request.form.getlist("items_qtys[]")
+        date_allot = request.form.get("chart_date")
+        if (3*len(ws_ids) == len(items_ids)+ len(items_units)+ len(items_qtys)) and date_allot:
+            ws_to_update= []
+            print("Reacghededs")
+            for i in range(len(ws_ids)):
+                ws_id = ws_ids[i]
+                item_id = items_ids[i]
+                item_qty = items_qtys[i]
+                item_unit = items_units[i]
+                item = Item.query.filter_by(database=database, id=item_id).first()
+                workstation = Workstation.query.filter_by(database=database, id=ws_id).first()
+                if workstation and item:
+                    if workstation not in ws_to_update:
+                        ws_to_update.append(workstation)
+                    try:
+                        conv_factor = get_conversion_factor(database, item, item_unit)
+                        item_qty = float(item_qty)/conv_factor
+                    except:
+                        item_qty = float(item_qty)
+                    job_inventory = Inventory(item=item,regdate=date_allot, item_unit = item.unit, qty = item_qty, note=f"Receipt_{workstation.name}_{date_allot}", database=database)
+                    db.session.add(job_inventory)
+                    db.session.commit()
+                    ws_job = WorkstationJob(item=item, qty_allot=0, qty_recv=item_qty, inventory=job_inventory,database=database, workstation=workstation, date_allot=date_allot)
+                    db.session.add(ws_job)
+                    db.session.commit()
+                    updateParentJobs(database.id, ws_id, item_id, date_allot)
+            for workstation in ws_to_update:
+                # updateMaterialIssue(workstation, date_allot)
+                autoMaterialIssue(workstation.id, date_allot, database.id)
+        return redirect(request.headers.get('Referer', '/'))
+
+class workstationsearch(Resource):
+    @jwt_required()
+    @requires_role(["BASIC"],0)
+    def post(self):
+        current_user = get_jwt_identity()
+        database = Data.query.filter_by(id = current_user["data"]).first()
+        req_json= request.get_json()
+        k = int(req_json.get('k', 10)) 
+        date =req_json.get('date', None)
+        item_name =req_json.get('name',None)
+        item_id = req_json.get('id',None)
+        filters = req_json.get('filters', None)
+        items=[]
+        if item_name and date:
+            print("item_name", item_name)
+            workstations_df = pd.DataFrame(
+                db.session.query(Workstation.id,Workstation.name).filter(
+                    Workstation.data_id == database.id).all(),columns=[ "workstation_id", "workstation_name"])
+            workstation_res_df = pd.DataFrame(
+                db.session.query(WorkstationResource.id,WorkstationResource.workstation_id,WorkstationResource.resource_id,
+                    ).filter(
+                    WorkstationResource.data_id == database.id, WorkstationResource.date_allot == date).all(),
+                columns=["ws_resource_id", "workstation_id" ,"resource_id"]
+                )
+            print("DEBUGG")
+            resources_df = pd.DataFrame(
+                db.session.query(Labor.id,Labor.name,Labor.code).filter(Labor.data_id == database.id).all(),
+                columns=["resource_id", "resource_name" ,"resource_code"]
+                )
+            workstation_res_df = pd.merge(workstation_res_df, workstations_df, on='workstation_id', how='right')
+
+            item_name = item_name.upper()
+            search_df = pd.merge(workstation_res_df, resources_df, on='resource_id', how="left").fillna("")
+            search_df["workstation_score"] = search_df["workstation_name"].map(lambda x: compare_strings(item_name, x.upper()))
+            search_df["resource_name_score"] = search_df["resource_name"].map(lambda x: compare_strings(item_name, x.upper()))
+            search_df["resource_code_score"] = search_df["resource_code"].map(lambda x: compare_strings(item_name, x.upper()))
+            search_df["max_score"] = search_df[["workstation_score", "resource_name_score", "resource_code_score"]].max(axis=1)
+            # search_df = search_df.sort_values(by=['max_score'], ascending = False)
+            print(search_df[["workstation_name", "resource_name" ,"max_score"]])
+            search_df["resource_name"] = search_df["resource_name"]+":"+ search_df["resource_code"]
+            resource_df = search_df.groupby(['workstation_id', 'workstation_name'])['resource_name'].agg(lambda x: ' '.join(x)).reset_index()
+            # Grouping by workstation_id and workstation_name, then finding the max score
+            max_score_df = search_df.groupby(['workstation_id', 'workstation_name'])['max_score'].max().reset_index()
+            print("resource_df\n" ,resource_df)
+            print("max_score_df\n" ,max_score_df)
+            result_df = pd.merge(resource_df, max_score_df, on=['workstation_id', 'workstation_name'], how='inner')
+            result_df = result_df.sort_values(by=['max_score'], ascending=False)
+            if k>0:
+                result_df = result_df.head(k)
+            print(result_df[["workstation_id", "workstation_name", "resource_name"]])
+            result_df["resource_name_2"] = result_df["resource_name"] 
+            results = result_df.rename(columns={"workstation_id":"id", "workstation_name":"name", "resource_name":"code", "resource_name_2":"unit"}).to_dict(orient='records')
+            return jsonify(results)
+        return jsonify([])
+        
+
 # class addrecord(Resource):
+
 #     @jwt_required()
 #     def post(self):
 #         current_user = get_jwt_identity()

@@ -38,3 +38,69 @@ def ExtractDateForSQL(date_text):
 #         current_user = get_jwt_identity()
 #         data = request.get_json()
 #segment = get_segment(request, current_user['data'])
+
+def demand_calculation_function(active_orders_df, inventory_stock_df, items_df, boms_df, raw_flag='NO', semi_flag='YES'):
+    demand_df = pd.merge(active_orders_df, inventory_stock_df, on='item_id', how='left')
+    demand_df["demand_qty"] = demand_df["total_quantity1"]
+    demand_df["parent_item_id"] = demand_df["item_id"]
+    demand_df = pd.merge(demand_df, items_df, left_on="parent_item_id", right_on='item_id', how='left')
+    demand_df = demand_df[demand_df["raw_flag"] == 'NO']
+    demand_df_merged = pd.merge(demand_df, boms_df, left_on='parent_item_id', right_on='parent_item_id', how='left')
+    demand_df_merged.dropna(subset=['bom_id'],inplace=True)
+    demand_df_merged["demand_qty"] = demand_df_merged["demand_qty"]*demand_df_merged["child_item_qty"]
+    demand_df_merged["parent_item_id"] = demand_df_merged["child_item_id"]
+    demand_df = demand_df_merged[["parent_item_id", "demand_qty"]]
+    result_demand = pd.DataFrame(columns=["item_id", "demand_qty"])
+    while len(demand_df["parent_item_id"]):
+        demand_df = pd.merge(demand_df, items_df, left_on="parent_item_id", right_on='item_id', how='left')
+        if semi_flag == 'YES' and raw_flag=='NO':
+            demand_to_apppend = demand_df[demand_df["raw_flag"] == 'NO']
+        elif raw_flag == "YES" and semi_flag=='NO':
+            demand_to_apppend = demand_df[demand_df["raw_flag"] == 'YES']
+        else:
+            demand_to_apppend = demand_df
+        demand_to_apppend = demand_to_apppend[["parent_item_id", "demand_qty"]].rename(columns={'parent_item_id':'item_id'})
+        result_demand = pd.concat([result_demand, demand_to_apppend], ignore_index=True)
+        demand_df = demand_df[demand_df["raw_flag"] == 'NO']
+        demand_df_merged = pd.merge(demand_df, boms_df, left_on='parent_item_id', right_on='parent_item_id', how='left')
+        demand_df_merged.dropna(subset=['bom_id'],inplace=True)
+        demand_df_merged["demand_qty"] = demand_df_merged["demand_qty"]*demand_df_merged["child_item_qty"]
+        demand_df_merged["parent_item_id"] = demand_df_merged["child_item_id"]
+        demand_df = demand_df_merged[["parent_item_id", "demand_qty"]]
+    result_demand = result_demand.groupby('item_id')['demand_qty'].sum().reset_index()
+    return result_demand
+
+def demand_calculation_function_inventory(active_orders_df_items_list, inventory_stock_df, items_df, boms_df, raw_flag='NO', semi_flag='YES'):
+    demand_df = inventory_stock_df[inventory_stock_df["item_id"].isin(active_orders_df_items_list)]
+    demand_df["demand_qty"] = demand_df["total_quantity2"]
+    demand_df["parent_item_id"] = demand_df["item_id"]
+    demand_df = pd.merge(demand_df, items_df, left_on="parent_item_id", right_on='item_id', how='left')
+    demand_df = demand_df[demand_df["raw_flag"] == 'NO']
+    demand_df_merged = pd.merge(demand_df, boms_df, left_on='parent_item_id', right_on='parent_item_id', how='left')
+    demand_df_merged.dropna(subset=['bom_id'],inplace=True)
+    demand_df_merged["demand_qty"] = demand_df_merged["demand_qty"]*demand_df_merged["child_item_qty"]
+    demand_df_merged["parent_item_id"] = demand_df_merged["child_item_id"]
+    demand_df = demand_df_merged[["parent_item_id", "demand_qty"]]
+    result_demand = pd.DataFrame(columns=["item_id", "demand_qty"])
+    while len(demand_df["parent_item_id"]):
+        demand_df = pd.merge(demand_df, items_df, left_on="parent_item_id", right_on='item_id', how='left')
+        if semi_flag == 'YES' and raw_flag=='NO':
+            demand_to_apppend = demand_df[demand_df["raw_flag"] == 'NO']
+        elif raw_flag == "YES" and semi_flag=='NO':
+            demand_to_apppend = demand_df[demand_df["raw_flag"] == 'YES']
+        else:
+            demand_to_apppend = demand_df
+        demand_to_apppend = demand_to_apppend[["parent_item_id", "demand_qty"]].rename(columns={'parent_item_id':'item_id'})
+        result_demand = pd.concat([result_demand, demand_to_apppend], ignore_index=True)
+        demand_df = demand_df[demand_df["raw_flag"] == 'NO']
+        demand_df_merged = pd.merge(demand_df, boms_df, left_on='parent_item_id', right_on='parent_item_id', how='left')
+        demand_df_merged.dropna(subset=['bom_id'],inplace=True)
+        demand_df_merged["demand_qty"] = demand_df_merged["demand_qty"]
+        demand_df_merged["demand_qty"] = (demand_df_merged["demand_qty"]*demand_df_merged["child_item_qty"]) 
+        demand_df_merged["parent_item_id"] = demand_df_merged["child_item_id"]
+        demand_df = demand_df_merged[["parent_item_id", "demand_qty"]]
+    result_demand = result_demand.groupby('item_id')['demand_qty'].sum().reset_index()
+    return result_demand
+
+
+

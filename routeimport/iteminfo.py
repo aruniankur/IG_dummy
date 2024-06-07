@@ -210,6 +210,7 @@ class add_category_to_item(Resource):
                         item_cat = ItemCategory.query.filter_by(database=database, item=item, category=category).first()
                         if item_cat:
                             res.append(f"Category already present in the item. item_id={item.id}")
+                            continue
                         item_category = ItemCategory(database=database, item=item, category=category)
                         db.session.add(item_category)
                         db.session.commit()
