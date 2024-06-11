@@ -416,6 +416,7 @@ class workstation(Resource):
         current_user = get_jwt_identity()
         database= Data.query.filter_by(id = current_user["data"]).first()
         primary_workstation = Workstation.query.filter_by(database=database, id = current_user["workstation_id"]).first()
+        primary_ws_flag = False
         if workstation_id:
             workstation = Workstation.query.filter_by(database=database, id = workstation_id).first()
             if workstation.id == primary_workstation.id:
