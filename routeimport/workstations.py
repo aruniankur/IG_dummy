@@ -523,6 +523,8 @@ class addjobtoworkstation(Resource):
             qty_allot=float(qty_allot)
             database= Data.query.filter_by(id = current_user["data"]).first()
             item = Item.query.filter_by(database=database, id = item_id).first()
+            if item is None:
+                return {"message": "item not found in database"}, 401
             workstation = Workstation.query.filter_by(database=database, id = ws_id).first()
             job_inventory = Inventory(item=item, item_unit = item.unit, qty = 0, note=f"Receipt_{workstation.name}_{date_allot}", database=database, regdate=date_allot)
             db.session.add(job_inventory)
