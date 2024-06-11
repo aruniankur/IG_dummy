@@ -6,13 +6,9 @@ from models import Labor, Data, Customer, BGProcess,Item, Category, PartnerCateg
 from flask import Flask,jsonify, render_template, request, redirect, session, send_from_directory, after_this_request, flash, Blueprint
 from sqlalchemy.orm import joinedload
 from sqlalchemy import and_
-# class addrecord(Resource):
-#     @jwt_required
-#     def post(self):
-#         current_user = get_jwt_identity()
-#         data = request.get_json()
-#segment = get_segment(request, current_user['data'])
-
+import pandas as pd
+import os
+from bgtasks import partnerMasterUpload
 
 def compare_strings(s1, s2):
     if s1 in s2:
@@ -47,17 +43,37 @@ class newPartner(Resource):
             database=database, gst = p_gst)
             db.session.add(customer)
             db.session.commit()
-            return redirect("/partners", code=302)
-        return render_template("orders/newcustomer.html")
+            return {"message": "new partner added successfully"}, 200
+        return {"message": "check input"}, 401
 
-class newPartnerBulkUpload(Resource):
+
+class PartnerBulkUpload(Resource):
     @jwt_required()
-    @requires_role(["MASTERS"],0)
+    @requires_role(["MASTERS"],1)
     def post(self):
-        current_user = get_jwt_identity()
-        data = request.get_json()
-        
-        
+        if request.method == "POST":
+            direct = os.path.join(os.getcwd(), 'uploads')
+            if not os.path.exists(direct):
+                os.makedirs(direct)
+            list_files = os.listdir(direct)
+            # Uncomment if you want to delete existing files
+            # for file in list_files:
+            #     path1 = os.path.join(direct, file)
+            #     os.remove(path1)
+            f = request.files["file"]
+            file_path = os.path.join(direct, f.filename)
+            f.save(file_path)
+            database = Data.query.filter_by(id=session["data"]).first()
+            result = partnerMasterUpload.delay(database.id, file_path)
+            bg_process = BGProcess(process_id=result.id, name="Item Master Upload", database=database)
+            db.session.add(bg_process)
+            db.session.commit()
+            return {"message": "File Uploaded to Server! Adding Items in Background"}, 200
+        return {"message": "Error!"}, 400
+    def get(self):
+        return {"message": "This endpoint only supports POST requests."}, 405
+
+
 
 class partners(Resource):
     @jwt_required()
@@ -67,6 +83,7 @@ class partners(Resource):
         CUSTOMERS=Customer.query.filter_by(data_id = current_user["data"]).all()
         segment = get_segment(request, current_user['data'])
         return {"customers":createjson(CUSTOMERS), "segment":segment}, 200
+    
     
     @jwt_required()
     @requires_role(["MASTERS"],0)
@@ -187,7 +204,7 @@ class search_partner(Resource):
                     Customer, PartnerCategory.partner_id == Customer.id).filter(
                     Customer.data_id == current_user["data"], PartnerCategory.category_id.in_(filters_list)).group_by(
                     Customer.id).all()
-                filter_df =pd.DataFrame(items_filter, columns=["id", "cat_count"])
+                filter_df = pd.DataFrame(items_filter, columns=["id", "cat_count"])
                 filter_df = filter_df[filter_df["cat_count"] == cat_count]
                 if item_name:
                     items = db.session.query(Customer).join(PartnerCategory).filter(

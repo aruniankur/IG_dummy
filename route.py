@@ -15,7 +15,7 @@ from routeimport import dashboard
 from routeimport import settingsuri
 from routeimport import authorise, item, iteminfo
 from routeimport import categories, labors, orders
-from routeimport import purchase, utility, inventory, maketostock, workstations
+from routeimport import purchase, utility, inventory, maketostock, workstations, partners, productions
 
 def register_routes(app,db):
     app.config['JWT_SECRET_KEY'] = 'YL8ck4TG1@cJvGfY#e5USH93@xCGu9'
@@ -230,3 +230,6 @@ def register_routes(app,db):
     api.add_resource(workstations.addjobtoworkstation, '/addjobtoworkstation')
     api.add_resource(workstations.editjobtoworkstation, '/editjobtoworkstation')
     api.add_resource(workstations.deletejobtoworkstation, '/deletejobtoworkstation')
+    
+    #----------------------------------------------------------------
+    
