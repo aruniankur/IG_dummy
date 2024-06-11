@@ -449,9 +449,10 @@ class workstation(Resource):
         DATA = {}
         for child_ws_map in child_workstations:
             child_jobs = WorkstationJob.query.filter_by(database=database, workstation=child_ws_map.child_ws, date_allot=ws_date).all()
+            #print(createjson(child_jobs),"werrrrr")
             child_resources = WorkstationResource.query.filter_by(database=database, workstation=child_ws_map.child_ws, date_allot=ws_date).all()
             DATA[child_ws_map.child_ws.id] = {"date": ws_date, "note":child_ws_map.child_ws.name, "chart_items":[]}
-            DATA[child_ws_map.child_ws.id]["ws_jobs"]=child_jobs
+            DATA[child_ws_map.child_ws.id]["ws_jobs"]=createjson(child_jobs)
             for child_job in child_jobs:
                 DATA[child_ws_map.child_ws.id]["chart_items"].append([child_job.id, child_job.item.name, 
                     jobs_breakup[workstation.id]["childs"][child_job.workstation.id]["totals"][child_job.item.id], child_job.item.unit, 0, child_job.item.id])
@@ -486,9 +487,14 @@ class workstation(Resource):
             CATEGORIES.append([item.id, item.name])
             CATEGORIES_MAP[f"{item.id}"] = item.name
         jobs_breakup[workstation.id] = createjson(workstation)
-        return jsonify(child_workstations = createjson(child_workstations), workstation_jobs = createjson(workstation_jobs),
-     workstation_resources= createjson(workstation_resources), workstation=createjson(workstation), data = DATA, WS_DATE=ws_date, leaf_data=leaf_data, jobs_breakup=jobs_breakup ,
-     primary_ws_flag = primary_ws_flag, WORKSTATION_PATH = WORKSTATION_PATH, segment=["workstations"], categories = CATEGORIES, CATEGORIES_MAP=CATEGORIES_MAP)
+        print("this is working till here")
+        print("this is working till here")
+        print({"child_workstations":createjson(child_workstations), "workstation_jobs":createjson(workstation_jobs),
+                "workstation_resources": createjson(workstation_resources), "workstation":createjson(workstation), "data": DATA, "WS_DATE":ws_date, "leaf_data":leaf_data, "jobs_breakup":jobs_breakup ,
+     "primary_ws_flag": primary_ws_flag, "WORKSTATION_PATH ": WORKSTATION_PATH, "segment":["workstations"], "categories": CATEGORIES, "CATEGORIES_MAP":CATEGORIES_MAP})
+        return {"child_workstations":createjson(child_workstations), "workstation_jobs":createjson(workstation_jobs),
+                "workstation_resources": createjson(workstation_resources), "workstation":createjson(workstation), "data": DATA, "WS_DATE":ws_date, "leaf_data":leaf_data, "jobs_breakup":jobs_breakup ,
+     "primary_ws_flag": primary_ws_flag, "WORKSTATION_PATH ": WORKSTATION_PATH, "segment":["workstations"], "categories": CATEGORIES, "CATEGORIES_MAP":CATEGORIES_MAP}, 200
     
 class addworkstation(Resource):
     @jwt_required()
@@ -568,7 +574,7 @@ class editjobtoworkstation(Resource):
                 parent_job.qty_allot =max(0, parent_job.qty_allot-edit_qty_allot)
                 db.session.commit()
                 updateParentJobs(database.id, ws_job.workstation.id, ws_job.item.id, ws_job.date_allot)
-            return {'message': 'Record Edited successfully', "record_id":-1, "workstation_id": ws_job.workstation.id, "date_allot":ws_job.date_allot}, 200
+            return {'message': 'Record Edited successfully', "record_id":-1, "workstation_id": ws_job.workstation.id, "date_allot":str(ws_job.date_allot)}, 200
         return {"Message":"check input"}, 401
     
 class deletejobtoworkstation(Resource):
