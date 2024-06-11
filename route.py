@@ -230,6 +230,11 @@ def register_routes(app,db):
     api.add_resource(workstations.addjobtoworkstation, '/addjobtoworkstation')
     api.add_resource(workstations.editjobtoworkstation, '/editjobtoworkstation')
     api.add_resource(workstations.deletejobtoworkstation, '/deletejobtoworkstation')
+    api.add_resource(workstations.workstation_chart_api, '/workstation_chart_api')
+    api.add_resource(workstations.workstation_chart_edits, '/workstation_chart_edits')
+    
+    
+    
     
     #----------------------------------------------------------------
     

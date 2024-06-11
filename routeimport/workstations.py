@@ -184,10 +184,7 @@ def get_total_jobs(workstation, date):
 
 def updateMaterialIssue(workstation, date, data):
     database = Data.query.filter_by(id=data).first()
-    # ws_parent = WorkstationMapping.query.filter_by(database=database, ws_child=)
-
     ws_jobs = WorkstationJob.query.filter_by(database=database, workstation=workstation, date_allot = date).all()
-
     wip_inventory_stock_data = db.session.query(Inventory.item_id,Item.code,Item.name,Item.unit,db.func.sum(Inventory.qty).label("total_quantity"))\
         .join(Item, Inventory.item_id == Item.id)\
         .group_by(Inventory.item_id, Item.code, Item.name, Item.unit)\
@@ -322,7 +319,7 @@ def updateParentJobs(data_id, workstation_id, item_id, date_allot):
                 ws_job = WorkstationJob(database= database, workstation=parent_ws, date_allot=date_allot, item=item, qty_allot=0)
                 db.session.add(ws_job)
                 db.session.commit()
-                updateMaterialIssue(workstation, date_allot)
+                updateMaterialIssue(workstation, date_allot, database.id)
             updateParentJobs(database.id, parent_ws.id, item.id, date_allot)
     else:
 
@@ -487,11 +484,11 @@ class workstation(Resource):
             CATEGORIES.append([item.id, item.name])
             CATEGORIES_MAP[f"{item.id}"] = item.name
         jobs_breakup[workstation.id] = createjson(workstation)
-        print("this is working till here")
-        print("this is working till here")
-        print({"child_workstations":createjson(child_workstations), "workstation_jobs":createjson(workstation_jobs),
-                "workstation_resources": createjson(workstation_resources), "workstation":createjson(workstation), "data": DATA, "WS_DATE":ws_date, "leaf_data":leaf_data, "jobs_breakup":jobs_breakup ,
-     "primary_ws_flag": primary_ws_flag, "WORKSTATION_PATH ": WORKSTATION_PATH, "segment":["workstations"], "categories": CATEGORIES, "CATEGORIES_MAP":CATEGORIES_MAP})
+    #     print("this is working till here")
+    #     print("this is working till here")
+    #     print({"child_workstations":createjson(child_workstations), "workstation_jobs":createjson(workstation_jobs),
+    #             "workstation_resources": createjson(workstation_resources), "workstation":createjson(workstation), "data": DATA, "WS_DATE":ws_date, "leaf_data":leaf_data, "jobs_breakup":jobs_breakup ,
+    #  "primary_ws_flag": primary_ws_flag, "WORKSTATION_PATH ": WORKSTATION_PATH, "segment":["workstations"], "categories": CATEGORIES, "CATEGORIES_MAP":CATEGORIES_MAP})
         return {"child_workstations":createjson(child_workstations), "workstation_jobs":createjson(workstation_jobs),
                 "workstation_resources": createjson(workstation_resources), "workstation":createjson(workstation), "data": DATA, "WS_DATE":ws_date, "leaf_data":leaf_data, "jobs_breakup":jobs_breakup ,
      "primary_ws_flag": primary_ws_flag, "WORKSTATION_PATH ": WORKSTATION_PATH, "segment":["workstations"], "categories": CATEGORIES, "CATEGORIES_MAP":CATEGORIES_MAP}, 200
@@ -587,20 +584,22 @@ class deletejobtoworkstation(Resource):
         if ws_job_delete_id:
             database= Data.query.filter_by(id = current_user["data"]).first()
             ws_job = WorkstationJob.query.filter_by(database=database, id = ws_job_delete_id).first()
+            if not ws_job:
+                return {"message": "no job found for id"} , 401
             ws_id, date_allot = ws_job.workstation.id, ws_job.date_allot
             if checkChildJobs(database.id, ws_job.workstation.id, ws_job.item.id, ws_job.date_allot):
                 return {'message': f"Item Present in Child WS!! Failed to delete {ws_job.item.name} in {ws_job.workstation.name}", "record_id":-1, "workstation_id": ws_id, "date_allot":date_allot}, 200
             parent_ws = WorkstationMapping.query.filter_by(database=database, child_ws=ws_job.workstation).first().parent_ws
             parent_job = WorkstationJob.query.filter_by(database=database, workstation=parent_ws, date_allot = ws_job.date_allot, item=ws_job.item).first()
-            if parent_job:
-                parent_job.qty_allot +=ws_job.qty_allot
-                db.session.commit()
+            print(parent_job)
+            delvar = ws_job.workstation
             if ws_job.wipinventory:
                 db.session.delete(ws_job.wipinventory)
             db.session.delete(ws_job.inventory)
             db.session.delete(ws_job)
-            updateMaterialIssue(workstation, date_allot, current_user['data'])
-            return {'message': 'Record Deleted successfully', "record_id":-1, "workstation_id": ws_id, "date_allot":date_allot}, 200
+            db.session.commit()
+            updateMaterialIssue(delvar, date_allot, current_user['data'])
+            return {'message': 'Record Deleted successfully', "record_id":-1, "workstation_id": ws_id, "date_allot":str(date_allot)}, 200
         return {"Message": "Check Input"}, 401
 
 
@@ -673,9 +672,10 @@ class workstation_chart_edits(Resource):
             if parent_job:
                 parent_job.qty_allot = max(0, parent_job.qty_allot-qty_allot)
             db.session.commit()
-            updateMaterialIssue(workstation, date_allot)
+            updateMaterialIssue(workstation, date_allot, current_user['data'])
             return jsonify({'message': 'Record added successfully', "record_id":ws_job.id})
         return {"Message":"error in input"}, 401
+# ----     
     
 class set_ws_item_category(Resource):
     @jwt_required()
@@ -767,7 +767,7 @@ class workstationsBulkEntry(Resource):
                         db.session.commit()
                         updateMaterialIssue(parent_job.workstation, date_allot)
                 db.session.commit()
-            updateMaterialIssue(workstation, date_allot)
+            updateMaterialIssue(workstation, date_allot, current_user['data'])
             return {"Message":"Success", "flash_message":res}, 200
         return {"Message":"Check Input"}, 401
 
@@ -972,7 +972,6 @@ class fg_btp_recv(Resource):
                     db.session.commit()
                     updateParentJobs(database.id, ws_id, item_id, date_allot)
             for workstation in ws_to_update:
-                # updateMaterialIssue(workstation, date_allot)
                 autoMaterialIssue(workstation.id, date_allot, database.id)
         return redirect(request.headers.get('Referer', '/'))
 
