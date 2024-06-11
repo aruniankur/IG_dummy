@@ -813,9 +813,9 @@ class workstationReceive(Resource):
             ## Update Material Issues for Auto Consumption Items
             autoMaterialIssue(ws_id, ws_date, database.id)
             workstation = Workstation.query.filter_by(database=database, id = ws_id).first()
-            primary_workstation = Workstation.query.filter_by(database=database, id = session["workstation_id"]).first()
-            numbers_list = get_mobile_numbers(session["data"])
-            user = User.query.filter_by(id=session["user_id"]).first()
+            primary_workstation = Workstation.query.filter_by(database=database, id = current_user["workstation_id"]).first()
+            numbers_list = get_mobile_numbers(current_user["data"])
+            user = User.query.filter_by(id=current_user["user_id"]).first()
             for number in numbers_list:
                 if workstation.id != primary_workstation.id:
                     resp = SEND_CUSTOM_MESSAGE(f"Production Received for {workstation.name} by {user.name}!", number)
@@ -861,8 +861,8 @@ class workstationReceive(Resource):
                         ws_issue.rejectinventory = new_reject_inventory
                     db.session.commit()
 
-                numbers_list = get_mobile_numbers(session["data"])
-                user = User.query.filter_by(id=session["user_id"]).first()
+                numbers_list = get_mobile_numbers(current_user["data"])
+                user = User.query.filter_by(id=current_user["user_id"]).first()
                 for number in numbers_list:
                     resp = SEND_CUSTOM_MESSAGE(f"Material Quantities Issued in workstation by {user.name}!", number)
                 flash("Material Issue Quantities Changed and Inventory Updated..", "success")
