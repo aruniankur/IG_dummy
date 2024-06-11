@@ -33,8 +33,8 @@ class Login(Resource):
                 user = User.query.filter_by(email=email).first()
                 if not user:
                     return {'message': 'Invalid username or password'}, 401
-                if not (check_password_hash(user.password, password)) or (check_password_hash(user.password, password+user.email.lower()) or password==user.password):
-                    return {'message': 'Invalid username-password'}, 401
+                if not (check_password_hash(user.password, password) or check_password_hash(user.password, password+user.email.lower()) or password==user.password):
+                    return {'message': 'Invalid username-password 2'}, 401
                 if user.token and (len(user.token) == 32 or user.access_role == 'PENDING'):
                     return {'message':'User found, email not verified',
                             'name': user.name,
