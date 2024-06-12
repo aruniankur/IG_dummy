@@ -2,6 +2,8 @@ from flask_migrate import Migrate
 from route import register_routes 
 from models import db
 from config import app
+from flasgger import Swagger
+
 #this is the local data
 
 #app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:1234@localhost:5432/intaligendb2'
@@ -13,6 +15,7 @@ from config import app
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:Intaligen1234@intaligen-dev-db.cp2ww2yimaft.ap-south-1.rds.amazonaws.com:5432/postgres'
 
 db.init_app(app)
+swagger = Swagger(app)
 register_routes(app, db)
 migrate = Migrate(app, db)
 if __name__ == '__main__': 

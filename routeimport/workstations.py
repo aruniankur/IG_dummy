@@ -28,12 +28,15 @@ def compare_strings(s1, s2):
         score= fuzz.token_sort_ratio(s1, s2)
     return score
 
+def fixjobs_breakup(t):
+    return 0
+
 def get_total_jobs(workstation, date):
     database=workstation.database
     ws_mapping = WorkstationMapping.query.filter_by(parent_ws=workstation, database=database).all()
     result={}
     result[workstation.id]={}
-    result[workstation.id]["workstation"] = workstation
+    result[workstation.id]["workstation"] = createjson(workstation)
     result[workstation.id]["totals"]={}
     result[workstation.id]["recv_totals"]={}
     result[workstation.id]["wip_totals"]={}
@@ -55,10 +58,10 @@ def get_total_jobs(workstation, date):
     jobs = WorkstationJob.query.filter_by(database=database, workstation=workstation, date_allot=date).all()
     ws_issues = WSMaterialIssue.query.filter_by(database=database, workstation=workstation, date_issue=date).all()
     ws_resources = WorkstationResource.query.filter_by(database=database, workstation=workstation, date_allot= date).all()
-    result[workstation.id]["jobs"] = jobs
-    result[workstation.id]["material_issues"] = ws_issues
-    result[workstation.id]["resources"] = ws_resources
-    result[workstation.id]["child_resources"]=ws_resources
+    result[workstation.id]["jobs"] = createjson(jobs)
+    result[workstation.id]["material_issues"] = createjson(ws_issues)
+    result[workstation.id]["resources"] = createjson(ws_resources)
+    result[workstation.id]["child_resources"]= createjson(ws_resources)
     if not workstation.category_config:
         workstation.category_config='{}'
     result[workstation.id]["category_config"] = json.loads(workstation.category_config)
@@ -75,7 +78,8 @@ def get_total_jobs(workstation, date):
         all_jobs+= child_all_jobs
 
     ## Adding for the jobs in parents
-    for job in result[workstation.id]["jobs"]:
+    for job in jobs:
+        
         print(job, job.id, job.qty_allot, job.item.rate)
         ## Jobs Aggregation
         if job.item.id not in result[workstation.id]["totals"].keys():
@@ -116,7 +120,7 @@ def get_total_jobs(workstation, date):
         .all()
     wip_inventory_stock_df = pd.DataFrame(wip_inventory_stock_data, columns=["item_id","total_stock" ])
 
-    for issue_item in result[workstation.id]["material_issues"]:
+    for issue_item in ws_issues:
         if issue_item.item.id not in result[workstation.id]["material_issue_totals"].keys():
             result[workstation.id]["material_issue_totals"][issue_item.item.id] = 0
             result[workstation.id]["material_return_totals"][issue_item.item.id] = 0
@@ -484,10 +488,22 @@ class workstation(Resource):
         for item in item_categories:
             CATEGORIES.append([item.id, item.name])
             CATEGORIES_MAP[f"{item.id}"] = item.name
-        #print(jobs_breakup[workstation.id])
-        print(createjson(jobs_breakup[workstation.id]['material_issues'][0]))
+        # jobs_breakup[workstation.id]['workstation'] = createjson(jobs_breakup[workstation.id]['workstation'])
+        # jobs_breakup[workstation.id]['material_issues'] = createjson(jobs_breakup[workstation.id]['material_issues'])
+        # jobs_breakup[workstation.id]['jobs'] = createjson(jobs_breakup[workstation.id]['jobs'])
+        # jobs_breakup[workstation.id]['resources'] = createjson(jobs_breakup[workstation.id]['resources'])
+        # jobs_breakup[workstation.id]['child_resources'] = createjson(jobs_breakup[workstation.id]['child_resources'])
+        # print(jobs_breakup.keys())
+        # print(jobs_breakup[workstation.id].keys())
+        # for i in jobs_breakup[workstation.id].keys():
+        #     print(i, " : ",jobs_breakup[workstation.id][i])
+        # print("--------------------------------")
+        # for i in jobs_breakup[workstation.id]['childs'].keys():
+        #     print(i, " : ",jobs_breakup[workstation.id]['childs'][i])
+
+        #print(createjson(jobs_breakup[workstation.id]['material_issues'][0]))
         # debug this
-        jobs_breakup[workstation.id] = createjson(workstation)
+        #jobs_breakup[workstation.id] = createjson(workstation)
         return {"child_workstations":createjson(child_workstations), "workstation_jobs":createjson(workstation_jobs),
                 "workstation_resources": createjson(workstation_resources), "workstation":createjson(workstation), "data": DATA, "WS_DATE":ws_date, "leaf_data":leaf_data, "jobs_breakup":jobs_breakup ,
      "primary_ws_flag": primary_ws_flag, "WORKSTATION_PATH ": WORKSTATION_PATH, "segment":["workstations"], "categories": CATEGORIES, "CATEGORIES_MAP":CATEGORIES_MAP}, 200
