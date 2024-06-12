@@ -139,7 +139,7 @@ def get_total_jobs(workstation, date):
                 result[workstation.id]["material_estimate_totals"][issue_item.item.id] = estimate
                 result[workstation.id]["material_estimates"][issue_item.item.id] = estimate
                 result[workstation.id]["material_estimate_totals_from_recv"][issue_item.item.id] = estimate
-    for ws_resource in result[workstation.id]["resources"]:
+    for ws_resource in ws_resources:
         result[workstation.id]["capacity_totals"]+= ws_resource.labor.salary * ws_resource.time_allot
 
     for child_key in result[workstation.id]["childs"].keys():
