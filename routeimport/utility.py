@@ -57,7 +57,6 @@ class delete_record(Resource):
         current_user = get_jwt_identity()
         data = request.get_json()
         database = Data.query.filter_by(id = current_user["data"]).first()
-        data = request.json
         table_name = data.get("table_name")
         record_id = data.get("id")
         table = table_names[table_name]
@@ -115,9 +114,9 @@ def update_task_status(database):
 
 class get_bg_tasks(Resource):
     @jwt_required()
-    def post(self):
+    def get(self):
         current_user = get_jwt_identity()
-        data = request.get_json()
+        #data = request.get_json()
         database = Data.query.filter_by(id = current_user["data"]).first()
         update_task_status(database)
         # Query the database to get the background tasks' status

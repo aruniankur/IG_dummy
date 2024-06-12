@@ -232,9 +232,14 @@ def register_routes(app,db):
     api.add_resource(workstations.deletejobtoworkstation, '/deletejobtoworkstation')
     api.add_resource(workstations.workstation_chart_api, '/workstation_chart_api')
     api.add_resource(workstations.workstation_chart_edits, '/workstation_chart_edits')
-    
-    
-    
-    
+    api.add_resource(workstations.set_ws_item_category,'/set_ws_item_category')
+    api.add_resource(workstations.workstationsBulkEntry,'/workstationsBulkEntry')
+    api.add_resource(workstations.workstationReceive, '/workstationReceive')
+    api.add_resource(workstations.generate_slips, '/generate_slips')
+    api.add_resource(workstations.workstationConfig, '/workstationConfig')
+    api.add_resource(workstations.fg_btp_recv, '/fg_btp_recv')
+    api.add_resource(workstations.workstationsearch, '/workstationsearch')
+
     #----------------------------------------------------------------
+    
     
