@@ -58,7 +58,13 @@ def get_total_jobs(workstation, date):
     jobs = WorkstationJob.query.filter_by(database=database, workstation=workstation, date_allot=date).all()
     ws_issues = WSMaterialIssue.query.filter_by(database=database, workstation=workstation, date_issue=date).all()
     ws_resources = WorkstationResource.query.filter_by(database=database, workstation=workstation, date_allot= date).all()
-    result[workstation.id]["jobs"] = createjson(jobs)
+    print("--------------------------------")
+    jobsjson = createjson(jobs)
+    for i in range(len(jobs)):
+        t = createjson(jobs[i].item)
+        jobsjson[i]['item'] = t
+    print("--------------------------------")
+    result[workstation.id]["jobs"] = jobsjson
     result[workstation.id]["material_issues"] = createjson(ws_issues)
     result[workstation.id]["resources"] = createjson(ws_resources)
     result[workstation.id]["child_resources"]= createjson(ws_resources)
