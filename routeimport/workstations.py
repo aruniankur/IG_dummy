@@ -464,7 +464,8 @@ class workstation(Resource):
             for child_job in child_jobs:
                 DATA[child_ws_map.child_ws.id]["chart_items"].append([child_job.id, child_job.item.name, 
                     jobs_breakup[workstation.id]["childs"][child_job.workstation.id]["totals"][child_job.item.id], child_job.item.unit, 0, child_job.item.id])
-            DATA[child_ws_map.child_ws.id]["chart_resources"] = child_resources
+            DATA[child_ws_map.child_ws.id]["chart_resources"] = createjson(child_resources)
+            #DATA[child_ws_map.child_ws.id]["chart_resources"]['resource'] = 
         leaf_data={}
         leaf_data["jobs"]={}
         for job in leaf_jobs:

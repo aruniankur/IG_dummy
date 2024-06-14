@@ -26,7 +26,7 @@ class labors(Resource):
             return {"message":"try again"}, 401
 
 class addlabor(Resource):
-    @jwt_required
+    @jwt_required()
     @requires_role(['MASTERS'],1)
     def post(self):
         current_user = get_jwt_identity()
@@ -50,7 +50,7 @@ class addlabor(Resource):
         return {"message": "please check input"}, 401
 
 class editlabor(Resource):
-    @jwt_required
+    @jwt_required()
     @requires_role(['MASTERS'],1)
     def post(self):
         current_user = get_jwt_identity()
@@ -80,7 +80,7 @@ class editlabor(Resource):
             return {"message": "labor detail edited", "result": res} ,200
         
 class searchlabor(Resource):
-    @jwt_required
+    @jwt_required()
     @requires_role(['MASTERS'],0)
     def post(self):
         current_user = get_jwt_identity()
@@ -102,10 +102,10 @@ class searchlabor(Resource):
         for labor in labors:
             results.append({'id': labor.id, 'name': labor.name, 'salary':labor.salary})
         print(results)
-        return jsonify(results), 200
+        return jsonify(results)
     
 class NewLaborResource(Resource):
-    @jwt_required
+    @jwt_required()
     @requires_role(["MASTERS"], 0)
     def get(self):
         #/newlabor?download=YES
@@ -126,7 +126,7 @@ class NewLaborResource(Resource):
             return send_from_directory(directory=direct, path=file_name)
 
         return {"message": "Invalid GET request"}, 400
-    @jwt_required
+    @jwt_required()
     @requires_role(["MASTERS"], 0)
     def post(self):
         current_user = get_jwt_identity()
