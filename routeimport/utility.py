@@ -28,7 +28,7 @@ class addrecord(Resource):
         record = table(**fields)
         db.session.add(record)
         db.session.commit()
-        return jsonify({'message': 'Record added successfully', "record_id":record.id}), 200
+        return jsonify({'message': 'Record added successfully', "record_id":record.id})
     
         
 class editrecord(Resource):
@@ -48,7 +48,7 @@ class editrecord(Resource):
         for field_name, field_value in fields.items():
             setattr(record, field_name, field_value)
         db.session.commit() 
-        return jsonify({'message': 'Record updated successfully'}), 200
+        return jsonify({'message': 'Record updated successfully'})
     
 
 class delete_record(Resource):
@@ -65,7 +65,7 @@ class delete_record(Resource):
         record = table.query.filter_by(database=database, id = record_id).first()
         db.session.delete(record)
         db.session.commit()
-        return jsonify({'message': 'Record deleted successfully'}) , 200
+        return jsonify({'message': 'Record deleted successfully'})
         
         
 
@@ -93,7 +93,7 @@ class downloadFile(Resource):
             list_files = os.listdir(direct)
             file_name = format_file_name
             return send_from_directory(directory=direct, path=file_name)
-        return "No Download Request"
+        return {"message":"No Download Request"}
         
 def update_task_status(database):
     active_tasks = BGProcess.query.filter_by(database=database).all()

@@ -94,6 +94,8 @@ class DataConfiguration(db.Model):
     data_id = db.Column(db.Integer, db.ForeignKey('datas.id'))
     item_master_config = db.Column(db.Text, default="BASIC")
     invoice_config = db.Column(db.Text, default="{}")
+    
+#google drive
 
 class Company(db.Model):
     __tablename__="company"
@@ -130,7 +132,6 @@ class User(db.Model):
     operation_role = db.Column(db.Text, default="BASIC")
     regdate = db.Column(db.Date, default=date.today())
     token = db.Column(db.String(512),default = 'NAN')
-
     subscriptions = db.relationship('Subscription', backref='user')
     mobilenumbers = db.relationship('MobileNumber', backref='user')
     userdatamappings = db.relationship('UserDataMapping', backref='user')
@@ -142,6 +143,7 @@ class UserDataMapping(db.Model):
     data_id = db.Column(db.Integer, db.ForeignKey('datas.id'))
     access_role = db.Column(db.String(64), default="BASIC")
     operation_role = db.Column(db.Text, default="BASIC")
+    
 
 class Labor(db.Model):
     __tablename__ = 'labors'

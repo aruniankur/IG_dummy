@@ -64,10 +64,19 @@ def get_total_jobs(workstation, date):
         t = createjson(jobs[i].item)
         jobsjson[i]['item'] = t
     print("--------------------------------")
+    wsissuejson = createjson(ws_issues)
+    for i in range(len(ws_issues)):
+        t = createjson(ws_issues[i].item)
+        wsissuejson[i]['item'] = t
+    print("--------------------------------")
+    ws_resourcesjson = createjson(ws_resources)
+    for i in range(len(ws_resources)):
+        t = createjson(ws_resources[i].labor)
+        ws_resourcesjson[i]['resource'] = t
     result[workstation.id]["jobs"] = jobsjson
-    result[workstation.id]["material_issues"] = createjson(ws_issues)
-    result[workstation.id]["resources"] = createjson(ws_resources)
-    result[workstation.id]["child_resources"]= createjson(ws_resources)
+    result[workstation.id]["material_issues"] = wsissuejson
+    result[workstation.id]["resources"] = ws_resourcesjson
+    result[workstation.id]["child_resources"]= ws_resourcesjson
     if not workstation.category_config:
         workstation.category_config='{}'
     result[workstation.id]["category_config"] = json.loads(workstation.category_config)
@@ -612,7 +621,7 @@ class deletejobtoworkstation(Resource):
                 return {"message": "no job found for id"} , 401
             ws_id, date_allot = ws_job.workstation.id, ws_job.date_allot
             if checkChildJobs(database.id, ws_job.workstation.id, ws_job.item.id, ws_job.date_allot):
-                return {'message': f"Item Present in Child WS!! Failed to delete {ws_job.item.name} in {ws_job.workstation.name}", "record_id":-1, "workstation_id": ws_id, "date_allot":date_allot}, 200
+                return {'message': f"Item Present in Child WS!! Failed to delete {ws_job.item.name} in {ws_job.workstation.name}", "record_id":-1, "workstation_id": ws_id, "date_allot":str(date_allot)}, 200
             parent_ws = WorkstationMapping.query.filter_by(database=database, child_ws=ws_job.workstation).first().parent_ws
             parent_job = WorkstationJob.query.filter_by(database=database, workstation=parent_ws, date_allot = ws_job.date_allot, item=ws_job.item).first()
             delvar = ws_job.workstation
@@ -621,7 +630,8 @@ class deletejobtoworkstation(Resource):
                 db.session.commit()
             if ws_job.wipinventory:
                 db.session.delete(ws_job.wipinventory)
-            db.session.delete(ws_job.inventory)
+            if ws_job.inventory:
+                db.session.delete(ws_job.inventory)
             db.session.delete(ws_job)
             db.session.commit()
             updateMaterialIssue(delvar, date_allot, current_user['data'])
