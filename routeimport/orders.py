@@ -410,6 +410,7 @@ class order_info(Resource):
                     ).filter(OrderItemDispatch.data_id == current_user['data'], OrderItemDispatch.delivery_batch_id.in_(delivery_batch_ids)).all(),
                 columns=['order_item_dispatch_id', 'dispatch_qty', 'delivery_batch_id', 'order_item_id']
                 )
+            #print(order_items_df)
             order_item_dispatch_df.dropna(inplace = True)
             order_data_df = pd.merge(order_items_df, order_item_dispatch_df, how='left', on='order_item_id')
             order_data_df =order_data_df.groupby('order_item_id').agg({'dispatch_qty':'sum', 'item_id':'first', 'order_qty':'first',
@@ -420,7 +421,6 @@ class order_info(Resource):
             order_data_df["balance_qty"] = order_data_df["order_qty"]-order_data_df["dispatch_qty"]
             order_items = OrderItem.query.filter_by(order_id=order.id, database=database).all()
             for _,order_item in order_data_df.iterrows():
-                print(order_item)
                 total_desp_qty = order_item.dispatch_qty
                 ORDERS_DATA[order.id]["items"].append(createjson(order_item))
                 ORDERS_DATA[order.id]["chart_items"].append([order_item.order_item_id, order_item.item_name,order_item.order_qty, order_item.item_unit, total_desp_qty, order_item.item_id])
@@ -437,7 +437,7 @@ class order_info(Resource):
             inventory_stock_df = pd.DataFrame(inventory_stock_data, columns=["item_id", "Item Name", "Item Unit","total_stock" ])
             inventory_dict = inventory_stock_df.set_index("item_id").to_dict(orient="index")
             #print({"message":"Redirect", "uri": "order_info_component.html" ,"orders_data":ORDERS_DATA, "DATA": DATA, "TODAY":TODAY, "INVENTORY_DATA":inventory_dict })
-            return {"message":"Redirect", "uri": "order_info_component.html" ,"orders_data":ORDERS_DATA, "DATA": DATA, "TODAY":str(TODAY), "INVENTORY_DATA":inventory_dict }, 302
+            return {"message":"Redirect", "uri": "order_info_component.html" ,"orders_data":ORDERS_DATA, "order_data_df": json.loads(order_data_df.to_json(orient='records')),"DATA": DATA, "TODAY":str(TODAY), "INVENTORY_DATA":inventory_dict }, 302
         return {"message": "no order id found"}, 200
     
     

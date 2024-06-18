@@ -179,6 +179,7 @@ def register_routes(app,db):
     api.add_resource(item.TaskStatusResource, '/status/<task_id>')
     api.add_resource(item.ItemListResource, '/items')
     #----------------------------------------------------------------
+    
     api.add_resource(orders.getorder, '/getorder')
     api.add_resource(orders.addorder, '/addorder')
     api.add_resource(orders.deleteorder, '/deleteorder')
