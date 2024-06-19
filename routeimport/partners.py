@@ -70,8 +70,6 @@ class PartnerBulkUpload(Resource):
             db.session.commit()
             return {"message": "File Uploaded to Server! Adding Items in Background"}, 200
         return {"message": "Error!"}, 400
-    def get(self):
-        return {"message": "This endpoint only supports POST requests."}, 405
 
 
 
@@ -141,19 +139,30 @@ class addpartnercategory(Resource):
         data = request.get_json()
         add_category_item_id = data.get("add_category_item_id")
         add_category_id = data.get("add_category_id")
-        if add_category_id and add_category_item_id:
-            item = Customer.query.filter_by(database=database, id=add_category_item_id).first()
-            category= Category.query.filter_by(database=database, id = add_category_id).first()
-            item_cat = PartnerCategory.query.filter_by(database=database, customer=item, category=category).first()
-            if item_cat:
-                return {"Message":"Category already present in the partner","partner_id":item.id}, 200
+        if not add_category_item_id:
+            return {"message": "Missing parameter: add_category_item_id"}, 400
+        if not add_category_id:
+            return {"message": "Missing parameter: add_category_id"}, 400
+        item = Customer.query.filter_by(database=database, id=add_category_item_id).first()
+        if not item:
+            return {"message": "Item not found with the given add_category_item_id"}, 404
+        category = Category.query.filter_by(database=database, id=add_category_id).first()
+        if not category:
+            return {"message": "Category not found with the given add_category_id"}, 404
+        item_cat = PartnerCategory.query.filter_by(database=database, customer=item, category=category).first()
+        if item_cat:
+            return {"message": "Category already present in the partner", "partner_id": item.id}, 200
+        try:
             item_category = PartnerCategory(database=database, customer=item, category=category)
-            print("Add:",item_category.category.name, item.name)
             db.session.add(item_category)
             db.session.commit()
-            return {"message":"Added Category!", "partner_id":item.id}, 302
+            return {"message": "Added Category!", "partner_id": item.id}, 201
+        except Exception as e:
+            db.session.rollback()
+            return {"message": f"An error occurred while adding the category: {str(e)}"}, 500
+
     
-class deletepartnercategory(Resource):
+class DeletePartnerCategory(Resource):
     @jwt_required()
     @requires_role(["MASTERS"], 0)
     def post(self):
@@ -162,14 +171,22 @@ class deletepartnercategory(Resource):
         data = request.get_json()
         delete_category_item_id = data.get("delete_category_item_id")
         delete_category_id= data.get("delete_category_id")
+        
         if delete_category_id and delete_category_item_id:
             category = Category.query.filter_by(database=database, id=delete_category_id).first()
             item = Customer.query.filter_by(database=database, id=delete_category_item_id).first()
+            
+            if not category or not item:
+                return {"message": "Category or Partner not found"}, 404
+            
             item_category = PartnerCategory.query.filter_by(database=database, customer=item, category=category).first()
             if item_category:
                 db.session.delete(item_category)
                 db.session.commit()
-                return {"message":"Category Removed", "partner_id":item.id }, 302
+                return {"message": "Category Removed", "partner_id": item.id}, 302
+        
+        return {"message": "Invalid input"}, 400
+
     
     
 class search_partner(Resource):

@@ -145,8 +145,12 @@ def register_routes(app,db):
     api.add_resource(item.add_item, '/AddItem')
     api.add_resource(item.edit_items, '/edit_items')
     api.add_resource(item.search_items, '/search_items')
+    
+    
+    # 2 more here 
     api.add_resource(item.ItemCategoriesExcelResource,'/item_categories_excel')
     api.add_resource(item.BOMItemsExcelResource, '/bom_items_excel')
+    
     #----------------------------------------------------------------
     api.add_resource(iteminfo.itemsinfo, '/ItemsInfo')
     api.add_resource(iteminfo.add_bom_item, '/add_bom_item')
@@ -210,6 +214,8 @@ def register_routes(app,db):
     api.add_resource(utility.addrecord, '/addrecord')
     api.add_resource(utility.editrecord, '/editrecord')
     api.add_resource(utility.delete_record, '/deleterecord')
+    
+    
     api.add_resource(utility.check_status, '/check_status')
     api.add_resource(utility.downloadFile, '/download_file')
     api.add_resource(utility.get_bg_tasks, '/get_bg_tasks')
@@ -242,5 +248,23 @@ def register_routes(app,db):
     api.add_resource(workstations.workstationsearch, '/workstationsearch')
 
     #----------------------------------------------------------------
+    api.add_resource(partners.newPartner, '/new_partner')
+    api.add_resource(partners.PartnerBulkUpload, '/partner_bulk_upload')   
+    api.add_resource(partners.partners, '/partners')
+    api.add_resource(partners.partnersinfo, '/partnersinfo')
+    api.add_resource(partners.addpartnercategory, '/addpartnertocategory')
+    api.add_resource(partners.DeletePartnerCategory, '/deletepartnercategory')
+    api.add_resource(partners.search_partner, '/search_partner')
+    #----------------------------------------------------------------
+    api.add_resource(productions.productionchartsnew, '/productionchartsnew')
+    api.add_resource(productions.productionbulkentry, '/productionbulkentry')
+    api.add_resource(productions.addprodchart, '/add_products')
+    api.add_resource(productions.prodchartquantity, '/prodchartquantty')
+    api.add_resource(productions.editquantity, '/editquantity')
+    api.add_resource(productions.deleteid, '/production/deleteid')
+    api.add_resource(productions.productionsummary_api, '/productionsummary_api')
+    api.add_resource(productions.maketostock_api, '/maketostock_api')
+    
+    
     
     
