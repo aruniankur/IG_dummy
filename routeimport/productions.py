@@ -17,7 +17,6 @@ from flask_restful import Api, Resource
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from routeimport.iteminfo import searchitemouter
 
-
 def extractDatePython():
     today = datetime.now()
     return today.strftime("%Y-%m-%d")
@@ -298,7 +297,7 @@ class deleteid(Resource):
 class productionsummary_api(Resource):
     @jwt_required()
     @requires_role(["PRODUCTION"],0)
-    def get(self):
+    def post(self):
         current_user = get_jwt_identity()
         database=Data.query.filter_by(id=current_user["data"]).first()
         req_json= request.get_json()
@@ -536,22 +535,9 @@ class maketostock_api(Resource):
             filters = req_json["filters"]
             print(filters)
             try:
-                url = "/production/items/search"
-                headers = {'Content-Type': 'application/json'}
-                body = {
-                        "k": -1,
-                        "filters":filters
-                        }
-                body["session_data"] = session.get('BAD_SECRET_KEY')
-                try:
-                    process_data_response = requests.post(f'{current_app.config["API_BASE_URL_LOCAL"]}/{url}', json=body, cookies=request.cookies)
-                except:
-                    process_data_response = requests.post(f'{current_app.config["API_BASE_URL"]}/{url}', json=body, cookies=request.cookies)
-                response_json = process_data_response.json()
-                items_dict = response_json
+                items_dict = searchitemouter(-1, None, None,filters,current_user["data"])
                 items_df = pd.DataFrame(items_dict)
-                print(items_df)
-            except requests.ConnectionError:
+            except:
                 return "Connection Error" 
         to_allot_dict={}
         SUMMARY=[]

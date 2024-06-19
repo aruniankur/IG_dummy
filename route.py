@@ -259,12 +259,13 @@ def register_routes(app,db):
     api.add_resource(productions.productionchartsnew, '/productionchartsnew')
     api.add_resource(productions.productionbulkentry, '/productionbulkentry')
     api.add_resource(productions.addprodchart, '/add_products')
-    api.add_resource(productions.prodchartquantity, '/prodchartquantty')
+    api.add_resource(productions.prodchartquantity, '/prodchartquantity')
     api.add_resource(productions.editquantity, '/editquantity')
     api.add_resource(productions.deleteid, '/production/deleteid')
     api.add_resource(productions.productionsummary_api, '/productionsummary_api')
     api.add_resource(productions.maketostock_api, '/maketostock_api')
     
+    #----------------------------------------------------------------
     
     
     

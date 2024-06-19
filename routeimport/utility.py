@@ -86,8 +86,8 @@ class downloadFile(Resource):
     def post(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-        format_url = request.args.get("format_url")
-        format_file_name = request.args.get("format_file_name")
+        format_url = data.get("format_url")
+        format_file_name = data.get("format_file_name")
         if format_file_name:           
             direct = os.path.join(os.getcwd(), 'downloads')
             list_files = os.listdir(direct)
