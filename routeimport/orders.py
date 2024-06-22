@@ -146,6 +146,8 @@ class dispatchorder(Resource):
         if dispatched_order_id:
             order = Order.query.filter_by(database=database, id=dispatched_order_id).first()
             order_items = OrderItem.query.filter_by(database=database, order=order).all()
+            if not order_items or not order:
+                return {"message": "order or order_items not found"}, 400
             new_order = Order(database=database, customer=order.customer, despdate = order.despdate, note = order.note + "_backorder", order_type=order.order_type, status="Pending")
             db.session.add(new_order)
             db.session.commit()
@@ -673,12 +675,12 @@ class dispatchchallan(Resource):
         current_user = get_jwt_identity()
         database=Data.query.filter_by(id=current_user["data"]).first()
         req_json = request.get_json()
-        order_id = req_json.get("order_id")
-        dispatch_flag = req_json.get("dispatch_flag")
-        dispatch_order_id = req_json.get("dispatch_order_id")
-        action = request.args.get("action")
-        delivery_batch_id = req_json.get('delivery_batch_id') 
-        actual_desp_date = req_json.get("actual_desp_date")
+        order_id = req_json.get("order_id",None)
+        dispatch_flag = req_json.get("dispatch_flag",None)
+        dispatch_order_id = req_json.get("dispatch_order_id",None)
+        action = req_json.get("action",None)
+        delivery_batch_id = req_json.get('delivery_batch_id',None)
+        actual_desp_date = req_json.get("actual_desp_date",None)
         if dispatch_flag and dispatch_order_id and action and delivery_batch_id:
             order = Order.query.filter_by(database=database, id = dispatch_order_id).first()
             delivery_batch = DeliveryBatch.query.filter_by(database=database, id=delivery_batch_id).first()
@@ -688,16 +690,18 @@ class dispatchchallan(Resource):
             if actual_desp_date:
                 delivery_batch.actual_desp_date = actual_desp_date
                 db.session.commit()
+                
+        
         DATA={}
         DATA["order_info"]=None
         DATA["order_items"]=None
         if order_id:
             order = Order.query.filter_by(database=database, id = order_id).first()
             order_items = OrderItem.query.filter_by(database=database, order = order).all()
-            DATA["order_info"]=order
-            DATA["order_items"]=order_items
+            DATA["order_info"]=createjson(order)
+            DATA["order_items"]=createjson(order_items)
         inventory_stock_data = db.session.query(Inventory.item_id,Item.name,Item.unit,db.func.sum(Inventory.qty).label("total_quantity")
             ).join(Item, Inventory.item_id == Item.id).group_by(Inventory.item_id, Item.name, Item.unit).filter(Inventory.data_id == current_user["data"]).all()
         inventory_stock_df = pd.DataFrame(inventory_stock_data, columns=["item_id", "Item Name", "Item Unit","total_stock" ])
         inventory_dict = inventory_stock_df.set_index("item_id").to_dict(orient="index")
-        return {"message":"redirect", "url":"dispatch_challan_new.html", "Data":DATA, "Today": datetime.date.today(), "Inventory_data":inventory_dict}, 200
+        return {"message":"redirect", "url":"dispatch_challan_new.html", "Data":DATA, "Today": str(datetime.date.today()), "Inventory_data":inventory_dict}, 200
