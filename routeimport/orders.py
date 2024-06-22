@@ -377,7 +377,15 @@ class order_info(Resource):
                     delivery_batch_ids.append(delivery_batch.id)
             ORDERS_DATA={}
             ORDERS_DATA[order.id]={}
-            ORDERS_DATA[order.id]["order"]=createjson(order)
+            orderjson = createjson(order)
+            for i in range(len(orderjson['deliverybatches'])):
+                # [i1, i2]
+                orderjson['deliverybatches'][i]['orderitemdispatch'] = createjson(order.deliverybatches[i].orderitemdispatch)
+                
+            orderjson['invoices'] = createjson(order.invoice)
+            #for i in order.deliverybatches:
+                #print(createjson(i.orderitemdispatch))
+            ORDERS_DATA[order.id]["order"]=orderjson
             customer=Customer.query.filter_by(id=order.customer_id, database=database).first()
             ORDERS_DATA[order.id]["customer"]=createjson(customer)
             ORDERS_DATA[order.id]["items"]=[]
@@ -422,9 +430,9 @@ class order_info(Resource):
             order_items = OrderItem.query.filter_by(order_id=order.id, database=database).all()
             for _,order_item in order_data_df.iterrows():
                 total_desp_qty = order_item.dispatch_qty
-                ORDERS_DATA[order.id]["items"].append(createjson(order_item))
+                ORDERS_DATA[order.id]["items"].append(json.loads(order_item.to_json()))
                 ORDERS_DATA[order.id]["chart_items"].append([order_item.order_item_id, order_item.item_name,order_item.order_qty, order_item.item_unit, total_desp_qty, order_item.item_id])
-
+            print(order_data_df)
             DATA["order_info"]=createjson(order)
             DATA["order_items"]=createjson(order_items)
             order_item_id = []
@@ -538,7 +546,7 @@ class get_order_breakup(Resource):
                         result.append({"code":item.code, "name":item.name,"item_id":item.id,"order_item_id":order_item.id,
                         "customer_name":order.customer.name, "dispatch_date":order.despdate, "note":order.note,
                         "unit":order_item.item_unit,"order_qty":order_item.order_qty, "dispatch_qty":order_item.dispatch_qty})
-        return jsonify(result), 200
+        return jsonify(result)
     
     
 class get_demand_breakup(Resource):
@@ -586,7 +594,7 @@ class get_demand_breakup(Resource):
                     flag = False
                 work_df.drop("parent_item_id_2", axis=1)
                 work_df["parent_item_id_2"] = work_df["parent_item_id"]
-        return jsonify(result), 200
+        return jsonify(result)
     
     
 class updateDeliveryBatchInvoice(Resource):

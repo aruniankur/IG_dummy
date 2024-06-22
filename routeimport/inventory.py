@@ -25,7 +25,7 @@ from routeimport.iteminfo import searchitemouter
 #segment = get_segment(request, current_user['data'])
 
 
-class Inventory(Resource):
+class Inventory1(Resource):
     @jwt_required()
     @requires_role(["INVENTORY"], 0)
     def get(self):
@@ -50,20 +50,23 @@ class bulkentryinventory(Resource):
         qty_list =data.get("items_qtys[]",[])
         note_list =data.get("items_notes[]",[])
         item_units =data.get("item_units[]",[])
+        res = []
         if id_list and qty_list and note_list and item_units:
             for i in range(len(id_list)):
-                item = Item.query.filter_by(id =id_list[i], database=database).first()
-                conversion_factor = get_conversion_factor(database, item, item_units[i])
-                converted_qty = float(qty_list[i])/conversion_factor
-                inventory = Inventory(item = item, qty = converted_qty, item_unit = item.unit, note = note_list[i], database=database)
-                db.session.add(inventory)
-                db.session.commit()
+                try:
+                    item = Item.query.filter_by(id =id_list[i], database=database).first()
+                    conversion_factor = get_conversion_factor(database, item, item_units[i])
+                    converted_qty = float(qty_list[i])/conversion_factor
+                    inventory = Inventory(item = item, qty = converted_qty, item_unit = item.unit, note = note_list[i], database=database)
+                    db.session.add(inventory)
+                    db.session.commit()
+                except:
+                    res.append(f"item  not found for item id {id_list[i]}")
             numbers_list = get_mobile_numbers(current_user["data"])
             user = User.query.filter_by(id=current_user["user_id"]).first()
             for number in numbers_list:
                 resp = SEND_MESSAGE(f"Inventory adjustment by {user.name}!", number)
-            flash("Items Added to Inventory!", "success")
-            return {"message": "Items Added to Inventory"}, 200
+            return {"message": "Items Added to Inventory", "result":res}, 200
         return {"message": "check input"}, 401
     
 
@@ -106,7 +109,7 @@ class inventoryledger(Resource):
         item_id = req_json.get('item_id', None)
         item_filter = req_json.get('item_filter', "no")
         data_type = req_json.get('data_type', "ACTIVE")
-        filters = req_json["filters"]
+        filters = req_json.get("filters", None)
         if item_filter == "yes":
             items_dict = searchitemouter(k, None, None,filters,current_user["data"])
             items_df = pd.DataFrame(items_dict)
@@ -234,7 +237,7 @@ class inventoryLookup(Resource):
             config = pdfkit.configuration(wkhtmltopdf=path)
             pdfkit.from_string(html_template, file_path, configuration=config)
             return send_from_directory(directory=direct, filename=file_name, as_attachment=True)
-        return jsonify(inventory_stock_df.to_dict(orient="records")), 200
+        return jsonify(inventory_stock_df.to_dict(orient="records"))
 
     
     
@@ -259,15 +262,16 @@ class stock_reconcilation(Resource):
         filter_type=req_json.get("filter_type")
         filters_array = req_json.get("filters[]",[])
         reconcile_flag = req_json.get("reconcile_flag", "NO")
-        item_ids = req_json.getlist("item_ids[]", [])
-        physical_stocks = req_json.getlist("physical_stocks[]", [])
-        notes = req_json.getlist("notes[]", [])
-        units = req_json.getlist("units[]", [])
+        item_ids = req_json.get("item_ids[]", [])
+        physical_stocks = req_json.get("physical_stocks[]", [])
+        notes = req_json.get("notes[]", [])
+        units = req_json.get("units[]", [])
         if len(filters_array):
             try:
                 body = {"k": -1,"filters":{"filters_array":filters_array, "filter_type":filter_type}}
                 items_dict = searchitemouter(-1, None, None,body["filters"],current_user['data'] )
                 items_df_filters = pd.DataFrame(items_dict)
+                print(items_df_filters)
             except:
                 print("this is the error point")
         inventory_stock_data = db.session.query(Inventory.item_id,Item.code,Item.name,Item.unit,db.func.sum(Inventory.qty).label("total_quantity"))\

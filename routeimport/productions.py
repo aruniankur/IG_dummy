@@ -125,7 +125,7 @@ class productionchartsnew(Resource):
             for ik in PRODCHART_ITEM:
                 l=[ik.id, ik.item.name, ik.qty_allot, ik.item_unit, i.date, ik.item.id ]
                 DATA_DICT[i.id]["chart_items"].append(l)
-        return jsonify(data=DATA_DICT, date=extractDatePython(), categories=CATEGORIES, segment=segment, ORDERS=orders, today=str(date.today()))
+        return jsonify(data=DATA_DICT, date=str(extractDatePython()), categories=CATEGORIES, segment=segment, ORDERS=createjson(orders), today=str(date.today()))
 
 #check this
         
@@ -139,10 +139,12 @@ class productionbulkentry(Resource):
         add_items_check = data.get("add_items_check")
         prod_chart_id = data.get("chart_id")
         order_note = data.get("order_note")
-        id_list = data.getlist("items_ids[]", [])
-        qty_list = data.getlist("items_qtys[]",[])
+        id_list = data.get("items_ids[]", [])
+        qty_list = data.get("items_qtys[]",[])
         if add_items_check and prod_chart_id:
             prodchart = Prodchart.query.filter_by(id = prod_chart_id, database = database).first() 
+            if not prodchart:
+                return {"error":"prodchart not found"}, 400
             if order_note:
                 prodchart.note = order_note
                 db.session.commit()   
@@ -156,52 +158,56 @@ class productionbulkentry(Resource):
             qty_list = result_df['Qty'].tolist()
             prodchart_items = ProdchartItem.query.filter_by(prodchart = prodchart, database=database).all()
             workstation = Workstation.query.filter_by(database=database, id=current_user["workstation_id"]).first()
+            resdanger = []
             for item in prodchart_items:
                 if str(item.item.id) not in id_list:
                     mapping = WSJobsProdChartItemMapping.query.filter_by(prodchartitem = item).first()
                     ws_job = mapping.workstationjob
                     if checkChildJobs(database.id, ws_job.workstation.id, ws_job.item.id, ws_job.date_allot):
-                        flash(f"Item Present in child WS!! Failed to Delete {ws_job.item.name} in {ws_job.workstation.name}", "danger")
+                        resdanger.append(f"Item Present in child WS!! Failed to Delete {ws_job.item.name} in {ws_job.workstation.name}")
                         continue
                     db.session.delete(item)
                     db.session.delete(ws_job)
                     db.session.delete(mapping)
             for i in range(len(id_list)):
-                item = Item.query.filter_by(id =id_list[i], database=database).first()
-                prodchart_item_check = ProdchartItem.query.filter_by(database=database, prodchart=prodchart, item=item).first()
-                if prodchart_item_check:
-                    print(item.name, qty_list[i], "CHECKKK!")
-                    print(prodchart_item_check.id, prodchart_item_check.item.name,prodchart_item_check.qty_allot)
-                    prodchart_item_check.qty_allot = qty_list[i]
-                    ws_job = prodchart_item_check.wsprodchartitemmappings[0].workstationjob
-                    ws_totals = get_job_totals(database.id, item.id, prodchart.date, ws_job.workstation.id )
-                    ws_job.qty_allot = ws_job.qty_allot + qty_list[i] - ws_totals["qty_allot"]  
-                    print(item.name,prodchart_item_check.qty_allot)
-                    db.session.commit()
-                    print("Existing Item Found!!")
-                else:
-                    print("New Item Found!!")
-                    job_inventory = Inventory(item=item,regdate=prodchart.date, item_unit = item.unit, qty = 0, note=f"Receipt_{workstation.name}_{prodchart.date}", database=database)
-                    db.session.add(job_inventory)
-                    db.session.commit()
-                    prodchart_new_item = ProdchartItem(database=database, prodchart=prodchart, item=item, qty_allot = qty_list[i], item_unit=item.unit,
-                        item_rate= item.rate)
-                    ws_job = WorkstationJob(database=database, item=item, date_allot = prodchart.date, qty_allot = qty_list[i], workstation=workstation,
-                        inventory = job_inventory)
-                    db.session.add(ws_job)
-                    db.session.add(prodchart_new_item)
-                    db.session.commit()
-                    wsjobprodchartitemmapping = WSJobsProdChartItemMapping(database=database, workstationjob = ws_job, prodchartitem = prodchart_new_item)
-                    db.session.add(wsjobprodchartitemmapping)
-                    db.session.commit()
-            updateMaterialIssue(workstation, prodchart.date)
+                try:
+                    item = Item.query.filter_by(id =id_list[i], database=database).first()
+                    prodchart_item_check = ProdchartItem.query.filter_by(database=database, prodchart=prodchart, item=item).first()
+                    if prodchart_item_check:
+                        print(item.name, qty_list[i], "CHECKKK!")
+                        print(prodchart_item_check.id, prodchart_item_check.item.name,prodchart_item_check.qty_allot)
+                        prodchart_item_check.qty_allot = qty_list[i]
+                        ws_job = prodchart_item_check.wsprodchartitemmappings[0].workstationjob
+                        ws_totals = get_job_totals(database.id, item.id, prodchart.date, ws_job.workstation.id )
+                        ws_job.qty_allot = ws_job.qty_allot + qty_list[i] - ws_totals["qty_allot"]  
+                        print(item.name,prodchart_item_check.qty_allot)
+                        db.session.commit()
+                        print("Existing Item Found!!")
+                    else:
+                        print("New Item Found!!")
+                        job_inventory = Inventory(item=item,regdate=prodchart.date, item_unit = item.unit, qty = 0, note=f"Receipt_{workstation.name}_{prodchart.date}", database=database)
+                        db.session.add(job_inventory)
+                        db.session.commit()
+                        prodchart_new_item = ProdchartItem(database=database, prodchart=prodchart, item=item, qty_allot = qty_list[i], item_unit=item.unit,
+                            item_rate= item.rate)
+                        ws_job = WorkstationJob(database=database, item=item, date_allot = prodchart.date, qty_allot = qty_list[i], workstation=workstation,
+                            inventory = job_inventory)
+                        db.session.add(ws_job)
+                        db.session.add(prodchart_new_item)
+                        db.session.commit()
+                        wsjobprodchartitemmapping = WSJobsProdChartItemMapping(database=database, workstationjob = ws_job, prodchartitem = prodchart_new_item)
+                        db.session.add(wsjobprodchartitemmapping)
+                        db.session.commit()
+                except:
+                    resdanger.append(f"not item found with id {id_list[i]}")
+            updateMaterialIssue(workstation, prodchart.date, current_user['data'])
             numbers_list = get_mobile_numbers(current_user["data"])
             user = User.query.filter_by(id=current_user["user_id"]).first()
             result = []
             for number in numbers_list:
                 resp = SEND_CUSTOM_MESSAGE(f"Items added to production chart dated {prodchart.date} by {user.name}!", number)
                 result.append([f"Items added to production chart dated {prodchart.date} by {user.name}!", number])
-            return {"message": result}, 200
+            return {"message": result, "danger_response" : resdanger}, 200
         
         
 class addprodchart(Resource):
@@ -245,7 +251,7 @@ class prodchartquantity(Resource):
             wsjobprodchartitemmapping = WSJobsProdChartItemMapping(database=database, workstationjob = ws_job, prodchartitem = prodchart_item)
             db.session.add(wsjobprodchartitemmapping)
             db.session.commit()
-            updateMaterialIssue(workstation, prodchart1.date)
+            updateMaterialIssue(workstation, prodchart1.date, current_user['data'])
             return {"message": "quantity added successfully"}, 200
         return {"message":"missing proper input"}, 401
     
@@ -290,7 +296,7 @@ class deleteid(Resource):
             db.session.delete(prodchart_item3)
             db.session.delete(ws_job)
             db.session.delete(mapping)
-            updateMaterialIssue(workstation, date3)
+            updateMaterialIssue(workstation, date3, current_user['data'])
             return {"message":"deleted successfully"}, 200
         return {"message":"missing proper input"}, 401
 
@@ -310,7 +316,7 @@ class productionsummary_api(Resource):
         order_id = req_json.get('order_id', None)
         print(k ,finished_flag, semi_finished_flag)
         if item_filter == "yes":
-            filters = req_json["filters"]
+            filters = req_json.get("filters",None)
             print(filters)
             try:
                 items_dict = searchitemouter(-1, None, None,filters,current_user["data"])
@@ -319,28 +325,28 @@ class productionsummary_api(Resource):
                 return "Connection Error" 
         inventory_stock_data = db.session\
             .query(Inventory.item_id, db.func.sum(Inventory.qty).label("total_quantity"))\
-            .group_by(Inventory.item_id).filter(Inventory.data_id == session["data"], Inventory.status=="ACTIVE").all()
+            .group_by(Inventory.item_id).filter(Inventory.data_id == current_user["data"], Inventory.status=="ACTIVE").all()
         wip_inventory_stock_data = db.session\
             .query(Inventory.item_id, db.func.sum(Inventory.qty).label("total_quantity"))\
-            .group_by(Inventory.item_id).filter(Inventory.data_id == session["data"], Inventory.status=="WIP").all()
+            .group_by(Inventory.item_id).filter(Inventory.data_id == current_user["data"], Inventory.status=="WIP").all()
         total_allot = db.session\
             .query(ProdchartItem.item_id, db.func.sum(ProdchartItem.qty_allot).label("total_quantity"))\
             .join(Prodchart, ProdchartItem.chart_id == Prodchart.id)\
-            .filter(Prodchart.date>date.today(), ProdchartItem.data_id==session["data"])\
+            .filter(Prodchart.date>date.today(), ProdchartItem.data_id==current_user["data"])\
             .group_by(ProdchartItem.item_id).all()
         progress = db.session\
             .query(ProdchartItem.item_id, db.func.sum(ProdchartItem.qty_allot).label("total_quantity"))\
             .join(Prodchart, ProdchartItem.chart_id == Prodchart.id)\
-            .filter(Prodchart.date==date.today(), ProdchartItem.data_id==session["data"])\
+            .filter(Prodchart.date==date.today(), ProdchartItem.data_id==current_user["data"])\
             .group_by(ProdchartItem.item_id).all()
 
         items = db.session.query(
             Item.id,Item.name,Item.raw_flag,Item.unit,
-            ).filter(Item.data_id == session["data"]).all()
+            ).filter(Item.data_id == current_user["data"]).all()
         bom_items_df = pd.DataFrame(
             db.session.query(
                 BOM.id,BOM.parent_item_id,BOM.child_item_id,BOM.child_item_qty,BOM.child_item_unit,BOM.margin,
-                ).filter(BOM.data_id == session["data"]).all(), columns= ["bom_id", "parent_item_id", "child_item_id", "child_item_qty", 
+                ).filter(BOM.data_id == current_user["data"]).all(), columns= ["bom_id", "parent_item_id", "child_item_id", "child_item_qty", 
             "child_item_unit", "margin"])
         items_df_2 = pd.DataFrame(items, columns=["item_id", "name", "raw_flag", "unit"])
 
@@ -371,7 +377,7 @@ class productionsummary_api(Resource):
             item_boms_df = pd.DataFrame(
                 db.session.query(
                     ItemBOM.item_id,ItemBOM.bom_name
-                    ).filter(ItemBOM.data_id == session["data"], ItemBOM.item_id.in_(items_df["id"])).all(),
+                    ).filter(ItemBOM.data_id == current_user["data"], ItemBOM.item_id.in_(items_df["id"])).all(),
                 columns=["item_id", "bom_name"]
                 )
             items_df = pd.merge(items_df, item_boms_df, left_on="id", right_on="item_id", how="left")
@@ -386,42 +392,42 @@ class productionsummary_api(Resource):
             active_orders_aggregate_data = db.session\
                 .query(OrderItem.item_id, db.func.sum(OrderItem.order_qty).label("total_quantity"))\
                 .join(Order, OrderItem.order_id == Order.id)\
-                .filter(OrderItem.data_id==session["data"], Order.id == order_id)\
+                .filter(OrderItem.data_id==current_user["data"], Order.id == order_id)\
                 .group_by(OrderItem.item_id).all()
             delivery_batch_query = db.session.query(
                     DeliveryBatch.id,
                 ).join(
                     Order, DeliveryBatch.order_id == Order.id 
                 ).filter(
-                    Order.id == order_id, DeliveryBatch.data_id==session["data"],
+                    Order.id == order_id, DeliveryBatch.data_id==current_user["data"],
                     DeliveryBatch.status == 'DISPATCHED'
                 ).all()
         elif item_filter=="yes":
             active_orders_aggregate_data = db.session\
                 .query(OrderItem.item_id, db.func.sum(OrderItem.order_qty).label("total_quantity"))\
                 .join(Order, OrderItem.order_id == Order.id)\
-                .filter(Order.status == "Active", OrderItem.data_id==session["data"], Order.order_type==0)\
+                .filter(Order.status == "Active", OrderItem.data_id==current_user["data"], Order.order_type==0)\
                 .group_by(OrderItem.item_id).all()
             delivery_batch_query = db.session.query(
                     DeliveryBatch.id,
                 ).join(
                     Order, DeliveryBatch.order_id == Order.id 
                 ).filter(
-                    Order.status == "Active", DeliveryBatch.data_id==session["data"], Order.order_type==0,
+                    Order.status == "Active", DeliveryBatch.data_id==current_user["data"], Order.order_type==0,
                     DeliveryBatch.status == 'DISPATCHED'
                 ).all()
         else:
             active_orders_aggregate_data = db.session\
                 .query(OrderItem.item_id, db.func.sum(OrderItem.order_qty).label("total_quantity"))\
                 .join(Order, OrderItem.order_id == Order.id)\
-                .filter(Order.status == "Active", OrderItem.data_id==session["data"], Order.order_type==0)\
+                .filter(Order.status == "Active", OrderItem.data_id==current_user["data"], Order.order_type==0)\
                 .group_by(OrderItem.item_id).all()
             delivery_batch_query = db.session.query(
                     DeliveryBatch.id,
                 ).join(
                     Order, DeliveryBatch.order_id == Order.id 
                 ).filter(
-                    Order.status == "Active", DeliveryBatch.data_id==session["data"], Order.order_type==0,
+                    Order.status == "Active", DeliveryBatch.data_id==current_user["data"], Order.order_type==0,
                     DeliveryBatch.status == 'DISPATCHED'
                 ).all()
         active_orders_df = pd.DataFrame(active_orders_aggregate_data, columns=["item_id", "total_quantity1"])
@@ -436,7 +442,7 @@ class productionsummary_api(Resource):
                 ).join(
                     OrderItem, OrderItemDispatch.order_item_id == OrderItem.id
                 ).filter(
-                    OrderItemDispatch.data_id == session['data'], 
+                    OrderItemDispatch.data_id == current_user['data'], 
                     OrderItemDispatch.delivery_batch_id.in_(active_delivery_batches_df["delivery_batch_id"].tolist()),
                 ).group_by(
                     OrderItem.item_id
@@ -503,8 +509,6 @@ class productionsummary_api(Resource):
             print("merged_df  sdcd:", merged_df)
         else:
             merged_df = pd.merge(merged_df, items_df_2, how="left", left_on="Item ID", right_on='item_id').rename(columns={"name":"Item Name", "unit":"Item Unit"})
-        # merged_df["Item Name"] = merged_df["Item ID"].map(item_mapping)
-        # merged_df["Item Unit"] = merged_df["Item ID"].map(unit_mapping)
         merged_df["Max Possible"] = merged_df["Item ID"].map(psbl_dictionary)
         merged_df.fillna(0, inplace=True)
         # merged_df["To Allot"] = merged_df["Order_Quantity"] - merged_df["Stock_Quantity"]-merged_df["Alloted_Quantity"]-merged_df["Progress_Quantity"]
@@ -541,7 +545,7 @@ class maketostock_api(Resource):
                 return "Connection Error" 
         to_allot_dict={}
         SUMMARY=[]
-        active_orders_df = mt_stock(session["data"])
+        active_orders_df = mt_stock(current_user["data"])
         if item_filter == "yes":
             if len(filters["filters_array"]) == 0:
                 print("check54")
@@ -565,12 +569,12 @@ class maketostock_api(Resource):
         total_allot = db.session\
             .query(ProdchartItem.item_id, db.func.sum(ProdchartItem.qty_allot).label("total_quantity"))\
             .join(Prodchart, ProdchartItem.chart_id == Prodchart.id)\
-            .filter(Prodchart.date>date.today(), ProdchartItem.data_id==session["data"])\
+            .filter(Prodchart.date>date.today(), ProdchartItem.data_id==current_user["data"])\
             .group_by(ProdchartItem.item_id).all()
         progress = db.session\
             .query(ProdchartItem.item_id, db.func.sum(ProdchartItem.qty_allot).label("total_quantity"))\
             .join(Prodchart, ProdchartItem.chart_id == Prodchart.id)\
-            .filter(Prodchart.date==date.today(), ProdchartItem.data_id==session["data"])\
+            .filter(Prodchart.date==date.today(), ProdchartItem.data_id==current_user["data"])\
             .group_by(ProdchartItem.item_id).all()
         # Convert total_allot to DataFrame
         total_allot_df = pd.DataFrame(total_allot, columns=["item_id", "total_quantity3"])

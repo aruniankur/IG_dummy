@@ -223,7 +223,7 @@ def register_routes(app,db):
     
     #----------------------------------------------------------------
     
-    api.add_resource(inventory.Inventory, '/inventory')
+    api.add_resource(inventory.Inventory1, '/inventory')
     api.add_resource(inventory.bulkentryinventory, '/bulkentryinventory')
     api.add_resource(inventory.addinventoryledger, '/add_inventory_ledger')
     api.add_resource(inventory.inventoryledger, '/inventory_ledger')
@@ -246,7 +246,6 @@ def register_routes(app,db):
     api.add_resource(workstations.workstationConfig, '/workstationConfig')
     api.add_resource(workstations.fg_btp_recv, '/fg_btp_recv')
     api.add_resource(workstations.workstationsearch, '/workstationsearch')
-
     #----------------------------------------------------------------
     api.add_resource(partners.newPartner, '/new_partner')
     api.add_resource(partners.PartnerBulkUpload, '/partner_bulk_upload')   
@@ -258,13 +257,12 @@ def register_routes(app,db):
     #----------------------------------------------------------------
     api.add_resource(productions.productionchartsnew, '/productionchartsnew')
     api.add_resource(productions.productionbulkentry, '/productionbulkentry')
-    api.add_resource(productions.addprodchart, '/add_products')
+    api.add_resource(productions.addprodchart, '/addprodchart')
     api.add_resource(productions.prodchartquantity, '/prodchartquantity')
     api.add_resource(productions.editquantity, '/editquantity')
     api.add_resource(productions.deleteid, '/production/deleteid')
     api.add_resource(productions.productionsummary_api, '/productionsummary_api')
     api.add_resource(productions.maketostock_api, '/maketostock_api')
-    
     #----------------------------------------------------------------
     
     
