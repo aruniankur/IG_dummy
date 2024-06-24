@@ -708,7 +708,7 @@ class dispatchchallan(Resource):
                 order_item.dispatch_qty = edit_disp_qty
                 db.session.commit()
             except:
-                result.append(f"order_item {i} not found")
+                result.append(f"order_item {order_item_ids[i]} not found")
             if action == 'dispatch':
                 if order_item.inventory_ledger_id:
                     inventory = Inventory.query.filter_by(id= order_item.inventory_ledger_id, database = database).first()
