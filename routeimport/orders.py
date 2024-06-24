@@ -12,7 +12,8 @@ from flask import Flask,current_app, jsonify, render_template, request, redirect
 import datetime
 from routeimport.decorators import requires_role, get_segment, createjson
 from routeimport.purchase import create_invoices
-
+from routeimport.utility import get_mobile_numbers
+from routeimport.bot_utility import SEND_MESSAGE, SEND_CUSTOM_MESSAGE, html_to_pdf_kit, send_custom_pdf
 
 def get_conversion_factor(database, item, unit_name):
     print(database.id, item.name, unit_name)
@@ -691,6 +692,91 @@ class dispatchchallan(Resource):
                 delivery_batch.actual_desp_date = actual_desp_date
                 db.session.commit()
                 
+        order_item_ids= req_json.get("order_item_ids[]", None)
+        desp_qtys=req_json.get("desp_qtys[]", None)
+        desp_units=req_json.get("desp_units[]", None)
+        print(desp_units)
+        result = []
+        for i in range(len(order_item_ids)):
+            order_item_id = order_item_ids[i]
+            edit_disp_qty= desp_qtys[i]
+            # order_item = OrderItem.query.filter_by(database=database, id=order_item_id).first()
+            try:
+                order_item = OrderItemDispatch.query.filter_by(database=database, id=order_item_id).first()
+                conversion_factor = get_conversion_factor(database, order_item.orderItem.item, desp_units[i])
+                edit_disp_qty = float(edit_disp_qty)/conversion_factor
+                order_item.dispatch_qty = edit_disp_qty
+                db.session.commit()
+            except:
+                result.append(f"order_item {i} not found")
+            if action == 'dispatch':
+                if order_item.inventory_ledger_id:
+                    inventory = Inventory.query.filter_by(id= order_item.inventory_ledger_id, database = database).first()
+                else:
+                    inventory = Inventory(item = order_item.orderItem.item, qty = 0, item_unit = order_item.orderItem.item.unit, note= "",
+                 database=database) 
+                    db.session.add(inventory)
+                    db.session.commit()
+                    order_item.inventory = inventory
+                    db.session.commit()
+                if order.order_type == 0:
+                    inventory.qty = -1*float(edit_disp_qty)
+                    inventory.note = f"sales_{delivery_batch.batch_name}_{order.customer.name}_{datetime.date.today()}"
+                else:
+                    inventory.qty = 1*float(edit_disp_qty)
+                    inventory.note = f"purchase_{delivery_batch.batch_name}_{order.customer.name}_{datetime.date.today()}"
+
+                inventory.regdate = delivery_batch.actual_desp_date
+                db.session.commit()
+        numbers_list = get_mobile_numbers(current_user["data"])
+        user = User.query.filter_by(id=current_user["user_id"]).first()
+        show_flag = 'Dispatched' if order.status == 'Dispatched' else 'Active'
+        if action=="save":
+            for number in numbers_list:
+                if order.order_type == 0:
+                    resp = SEND_CUSTOM_MESSAGE(f"Items saved for Dispatch of order, {order.customer.name} by {user.name}!", number)
+                    result.append([f"Items saved for Dispatch of order, {order.customer.name} by {user.name}!", number])
+                else:
+                    resp = SEND_CUSTOM_MESSAGE(f"Items saved for Receive of order, {order.customer.name} by {user.name}!", number)
+                    result.append([f"Items saved for Receive of order, {order.customer.name} by {user.name}!", number])
+            # return redirect(f"/dispatchchallan?order_id={order.id}", code=302)
+            if order.order_type == 0:
+                return {"message": "Items Saved in Dispatch Console!", "order_id": order.id, "flag": show_flag, "message_result": result}, 302
+            else:
+                return {"message": "Items Saved in Dispatch Console!", "order_id": order.id, "flag": show_flag, "message_result": result}, 302
+ 
+        ## Invoice
+        # url = url_for('invoice_bp.invoice_route', order_id=order.id, action='generate', invoice_class='delivery-slip', invoice_file='delivery_slip')
+        
+        # this need changes  - Aruni 
+        
+        
+        # if delivery_batch.invoice:
+            
+            # url = url_for('invoice_bp.invoice_route', invoice_id=delivery_batch.invoice.id, action='generate', delivery_batch_id=delivery_batch.id)
+
+            # base_url = current_app.config['API_BASE_URL']
+            # base_url_local = current_app.config['API_BASE_URL_LOCAL']
+            # # Pass request.cookies as context in the headers
+            # headers = {'Cookie': '; '.join([f"{key}={value}" for key, value in request.cookies.items()])}
+            # try:
+            #     full_url = f"{base_url}{url}"
+            #     response = requests.get(full_url, cookies=request.cookies)
+            # except:
+            #     full_url = f"{base_url_local}{url}"
+            #     response = requests.get(full_url, cookies=request.cookies)
+            # # response = requests.get(full_url)
+            # invoice_html = response.text
+            # # print(invoice_html)
+            # result_pdf_path, result_pdf_name = html_to_pdf_kit(invoice_html,current_user['data'])
+            # for number in numbers_list:
+            #     resp = SEND_CUSTOM_MESSAGE(f"Items Dispatched of order, {order.customer.name} by {user.name}!", number)
+            #     send_custom_pdf(number, result_pdf_name, result_pdf_path)
+            # return redirect("/orders?show_flag=Dispatched", code=302)
+        # if order.order_type == 0:
+        #     return redirect(f"/orders?show_flag={show_flag}&order_id_set={order.id}", code=302)
+        # else:
+        #     return redirect(f"/purchase?show_flag={show_flag}&order_id_set={order.id}", code=302)
         
         DATA={}
         DATA["order_info"]=None
