@@ -707,27 +707,28 @@ class dispatchchallan(Resource):
                 edit_disp_qty = float(edit_disp_qty)/conversion_factor
                 order_item.dispatch_qty = edit_disp_qty
                 db.session.commit()
+                if action == 'dispatch':
+                    if order_item.inventory_ledger_id:
+                        inventory = Inventory.query.filter_by(id= order_item.inventory_ledger_id, database = database).first()
+                    else:
+                        inventory = Inventory(item = order_item.orderItem.item, qty = 0, item_unit = order_item.orderItem.item.unit, note= "",
+                    database=database) 
+                        db.session.add(inventory)
+                        db.session.commit()
+                        order_item.inventory = inventory
+                        db.session.commit()
+                    if order.order_type == 0:
+                        inventory.qty = -1*float(edit_disp_qty)
+                        inventory.note = f"sales_{delivery_batch.batch_name}_{order.customer.name}_{datetime.date.today()}"
+                    else:
+                        inventory.qty = 1*float(edit_disp_qty)
+                        inventory.note = f"purchase_{delivery_batch.batch_name}_{order.customer.name}_{datetime.date.today()}"
+
+                    inventory.regdate = delivery_batch.actual_desp_date
+                    db.session.commit()
             except:
                 result.append(f"order_item {order_item_ids[i]} not found")
-            if action == 'dispatch':
-                if order_item.inventory_ledger_id:
-                    inventory = Inventory.query.filter_by(id= order_item.inventory_ledger_id, database = database).first()
-                else:
-                    inventory = Inventory(item = order_item.orderItem.item, qty = 0, item_unit = order_item.orderItem.item.unit, note= "",
-                 database=database) 
-                    db.session.add(inventory)
-                    db.session.commit()
-                    order_item.inventory = inventory
-                    db.session.commit()
-                if order.order_type == 0:
-                    inventory.qty = -1*float(edit_disp_qty)
-                    inventory.note = f"sales_{delivery_batch.batch_name}_{order.customer.name}_{datetime.date.today()}"
-                else:
-                    inventory.qty = 1*float(edit_disp_qty)
-                    inventory.note = f"purchase_{delivery_batch.batch_name}_{order.customer.name}_{datetime.date.today()}"
-
-                inventory.regdate = delivery_batch.actual_desp_date
-                db.session.commit()
+                
         numbers_list = get_mobile_numbers(current_user["data"])
         user = User.query.filter_by(id=current_user["user_id"]).first()
         show_flag = 'Dispatched' if order.status == 'Dispatched' else 'Active'
