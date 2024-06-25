@@ -697,38 +697,38 @@ class dispatchchallan(Resource):
         desp_units=req_json.get("desp_units[]", None)
         print(desp_units)
         result = []
+        if len(desp_units) != len(desp_qtys) != len(order_item_ids):
+            return {"error":"order items, desp qtys and desp units are not of equal length"}, 200
         for i in range(len(order_item_ids)):
             order_item_id = order_item_ids[i]
             edit_disp_qty= desp_qtys[i]
             # order_item = OrderItem.query.filter_by(database=database, id=order_item_id).first()
-            try:
-                order_item = OrderItemDispatch.query.filter_by(database=database, id=order_item_id).first()
-                conversion_factor = get_conversion_factor(database, order_item.orderItem.item, desp_units[i])
-                edit_disp_qty = float(edit_disp_qty)/conversion_factor
-                order_item.dispatch_qty = edit_disp_qty
-                db.session.commit()
-                if action == 'dispatch':
-                    if order_item.inventory_ledger_id:
-                        inventory = Inventory.query.filter_by(id= order_item.inventory_ledger_id, database = database).first()
-                    else:
-                        inventory = Inventory(item = order_item.orderItem.item, qty = 0, item_unit = order_item.orderItem.item.unit, note= "",
-                    database=database) 
-                        db.session.add(inventory)
-                        db.session.commit()
-                        order_item.inventory = inventory
-                        db.session.commit()
-                    if order.order_type == 0:
-                        inventory.qty = -1*float(edit_disp_qty)
-                        inventory.note = f"sales_{delivery_batch.batch_name}_{order.customer.name}_{datetime.date.today()}"
-                    else:
-                        inventory.qty = 1*float(edit_disp_qty)
-                        inventory.note = f"purchase_{delivery_batch.batch_name}_{order.customer.name}_{datetime.date.today()}"
-
-                    inventory.regdate = delivery_batch.actual_desp_date
+            order_item = OrderItemDispatch.query.filter_by(database=database, id=order_item_id).first()
+            if not order_item:
+                result.append(f"OrderItem with id {order_item_ids[i]} not found")
+                continue
+            conversion_factor = get_conversion_factor(database, order_item.orderItem.item, desp_units[i])
+            edit_disp_qty = float(edit_disp_qty)/conversion_factor
+            order_item.dispatch_qty = edit_disp_qty
+            db.session.commit()
+            if action == 'dispatch':
+                if order_item.inventory_ledger_id:
+                    inventory = Inventory.query.filter_by(id= order_item.inventory_ledger_id, database = database).first()
+                else:
+                    inventory = Inventory(item = order_item.orderItem.item, qty = 0, item_unit = order_item.orderItem.item.unit, note= "",database=database) 
+                    db.session.add(inventory)
                     db.session.commit()
-            except:
-                result.append(f"order_item {order_item_ids[i]} not found")
-                
+                    order_item.inventory = inventory
+                    db.session.commit()
+                if order.order_type == 0:
+                    inventory.qty = -1*float(edit_disp_qty)
+                    inventory.note = f"sales_{delivery_batch.batch_name}_{order.customer.name}_{datetime.date.today()}"
+                else:
+                    inventory.qty = 1*float(edit_disp_qty)
+                    inventory.note = f"purchase_{delivery_batch.batch_name}_{order.customer.name}_{datetime.date.today()}"
+
+                inventory.regdate = delivery_batch.actual_desp_date
+                db.session.commit()
         numbers_list = get_mobile_numbers(current_user["data"])
         user = User.query.filter_by(id=current_user["user_id"]).first()
         show_flag = 'Dispatched' if order.status == 'Dispatched' else 'Active'
@@ -791,4 +791,4 @@ class dispatchchallan(Resource):
             ).join(Item, Inventory.item_id == Item.id).group_by(Inventory.item_id, Item.name, Item.unit).filter(Inventory.data_id == current_user["data"]).all()
         inventory_stock_df = pd.DataFrame(inventory_stock_data, columns=["item_id", "Item Name", "Item Unit","total_stock" ])
         inventory_dict = inventory_stock_df.set_index("item_id").to_dict(orient="index")
-        return {"message":"redirect", "url":"dispatch_challan_new.html", "Data":DATA, "Today": str(datetime.date.today()), "Inventory_data":inventory_dict}, 200
+        return {"message":"redirect", "url":"dispatch_challan_new.html", "Data":DATA, "Today": str(datetime.date.today()), "Inventory_data":inventory_dict, "result": result}, 200
