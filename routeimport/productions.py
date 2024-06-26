@@ -536,7 +536,7 @@ class maketostock_api(Resource):
         order_id = req_json.get('order_id', None)
         print(k ,finished_flag, semi_finished_flag)
         if item_filter == "yes":
-            filters = req_json["filters"]
+            filters = req_json.get("filters", None)
             print(filters)
             try:
                 items_dict = searchitemouter(-1, None, None,filters,current_user["data"])

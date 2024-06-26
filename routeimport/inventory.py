@@ -137,8 +137,12 @@ class inventoryledger(Resource):
                 inventories_df = pd.merge(inventories_df, items_df, left_on="item_id", right_on="id", how="inner", suffixes=('', '_items'))
             except:
                 print(items_df)
-        inventories_df['regdate'] = inventories_df['regdate'].dt.strftime('%d-%m-%Y')
-        return inventories_df.to_dict(orient="records"), 200
+        print(inventories_df)
+        if not inventories_df.empty:
+            inventories_df['regdate'] = inventories_df['regdate'].dt.strftime('%d-%m-%Y')
+            return inventories_df.to_dict(orient="records"), 200
+        else:
+            return [], 200
     
 
 class inventoryLookup(Resource):
