@@ -1,5 +1,7 @@
 flask --app run.py --debug run
 celery -A bgtasks.celery_app worker --loglevel INFO
+celery -A bgtasks.celery_app beat --loglevel INFO
+
 
 
 gunicorn -b 0.0.0.0:8000 run:app

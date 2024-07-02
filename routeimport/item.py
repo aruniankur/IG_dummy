@@ -303,7 +303,7 @@ def category_excel_new(data_id):
     
     
 class ItemCategoriesExcelResource(Resource):
-    @jwt_required
+    @jwt_required()
     @requires_role(["MASTERS"], 0)
     def post(self):
         current_user = get_jwt_identity()
@@ -332,7 +332,7 @@ class ItemCategoriesExcelResource(Resource):
 #----------------------------------------------------------------
 
 class BOMItemsExcelResource(Resource):
-    @jwt_required
+    @jwt_required()
     @requires_role(["MASTERS"], 0)
     def post(self):
         current_user = get_jwt_identity()
@@ -349,7 +349,7 @@ class BOMItemsExcelResource(Resource):
         db.session.add(bg_process)
         db.session.commit()
         return {"message": "File uploaded successfully. Item category mapping is being updated in the background.", "result_id":result.id}, 200
-    @jwt_required
+    @jwt_required()
     @requires_role(["MASTERS"], 0)
     def get(self):
         download_stat = request.args.get("download")

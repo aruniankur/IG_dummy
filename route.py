@@ -15,7 +15,7 @@ from routeimport import dashboard
 from routeimport import settingsuri
 from routeimport import authorise, item, iteminfo
 from routeimport import categories, labors, orders
-from routeimport import purchase, utility, inventory, maketostock, workstations, partners, productions
+from routeimport import purchase, utility, inventory, maketostock, workstations, partners, productions, chatappapi
 
 def register_routes(app,db):
     app.config['JWT_SECRET_KEY'] = 'YL8ck4TG1@cJvGfY#e5USH93@xCGu9'
@@ -207,7 +207,7 @@ def register_routes(app,db):
     api.add_resource(purchase.PurchaseOrders, '/purchaseorders')
     api.add_resource(purchase.addneworder, '/addneworder')
     api.add_resource(purchase.PurchaseOrderBreakupResource, '/purchase_order_breakup_resource')
-    api.add_resource(purchase.ReceiveChallan, '/receive_challan')
+    api.add_resource(purchase.ReceiveChallan, '/receive_challan', '/receive_challan/<int:order_id>')
 
     #----------------------------------------------------------------
     
@@ -265,5 +265,15 @@ def register_routes(app,db):
     api.add_resource(productions.maketostock_api, '/maketostock_api')
     #----------------------------------------------------------------
     
+    api.add_resource(chatappapi.getallticketusermapping,'/chatapp/getallticketusermapping')
+    api.add_resource(chatappapi.addusertoticket, '/chatapp/addusertoticket')
+    api.add_resource(chatappapi.addticket, '/chatapp/addticket')
+    api.add_resource(chatappapi.editticket, '/chatapp/editticket')
+    api.add_resource(chatappapi.deleteticket, '/chatapp/deleteticket')
+    api.add_resource(chatappapi.getallticket, '/chatapp/getallticket')
+    api.add_resource(chatappapi.remove_user_from_ticket, '/chatapp/remove_user_from_ticket')
+    api.add_resource(chatappapi.getallticketforuser, '/chatapp/getallticketforuser')
+    api.add_resource(chatappapi.get_conversations_for_ticket, '/chatapp/get_conversations_for_ticket')
+    api.add_resource(chatappapi.get_user_mappings_for_ticket, '/chatapp/get_user_mappings_for_ticket')
     
     

@@ -391,3 +391,14 @@ def addStockList(data_id, file_path):
                 db.session.add(inventory)
     db.session.commit()
     return res
+
+
+
+#----------------------------------------------------------------
+
+# bg routine task
+
+@celery_app.task
+def periodic_task():
+    print("Periodic task")
+    return "Periodic task executed"

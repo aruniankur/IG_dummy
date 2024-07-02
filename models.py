@@ -12,6 +12,34 @@ from datetime import datetime, date
 #         return f'Person {self.name} {self.age} {self.job} {self.gameplayer}' 
 db = SQLAlchemy()
 
+class Conversation(db.Model):
+    __bind_key__ = 'chatappdb'
+    __tablename__ = 'conversation'
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey('tickets.id'), nullable=False)
+    message = db.Column(db.JSON, nullable=False)
+    sendby = db.Column(db.Integer, nullable=False)
+    msgtime = db.Column(db.DateTime, nullable=False, default=datetime.now())
+
+class Ticket(db.Model):
+    __bind_key__ = 'chatappdb'
+    __tablename__ = 'tickets'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+    date_created = db.Column(db.DateTime, nullable=False, default=datetime.now())
+    creater_id = db.Column(db.Integer, nullable=False)
+    description = db.Column(db.JSON, nullable=False)
+    type = db.Column(db.String(50), nullable=True)
+    status = db.Column(db.String(50), nullable=False)
+
+class TicketUserMapping(db.Model):
+    __bind_key__ = 'chatappdb'
+    __tablename__ = 'ticketusermapping'
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey('tickets.id'), nullable=False)
+    user_id = db.Column(db.Integer, nullable=False)
+    dateadded = db.Column(db.DateTime, nullable=False, default=datetime.now())
+
 class Subscription(db.Model):
     __tablename__='subscriptions'
     id = db.Column(db.Integer, primary_key=True)

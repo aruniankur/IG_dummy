@@ -198,14 +198,14 @@ class PurchaseOrders(Resource):
             if customer_id_list and order.customer.id not in customer_id_list:
                 continue
             ORDERS_DATA[order.id] = {
-                "order": order,
-                "customer": Customer.query.filter_by(id=order.customer_id, database=database).first(),
+                "order": createjson(order),
+                "customer": createjson(Customer.query.filter_by(id=order.customer_id, database=database).first()),
                 "items": [],
                 "chart_items": []
             }
             order_items = OrderItem.query.filter_by(order_id=order.id, database=database).all()
             for order_item in order_items:
-                ORDERS_DATA[order.id]["items"].append(order_item)
+                ORDERS_DATA[order.id]["items"].append(createjson(order_item))
                 ORDERS_DATA[order.id]["chart_items"].append([
                     order_item.id, order_item.item.name, 
                     order_item.order_qty, order_item.item.unit, 0, order_item.item.id
@@ -213,7 +213,7 @@ class PurchaseOrders(Resource):
         
         categories = Category.query.filter_by(database=database, category_type=2).all()
         CATEGORIES = [[item.id, item.name] for item in categories]
-        segment = get_segment(request)
+        segment = get_segment(request, current_user['data'])
         order_id_set = data.get('order_id_set')
         order_id_set_2 = data.get('order_id_set_2')
         if order_id_set_2:
@@ -236,14 +236,14 @@ class PurchaseOrders(Resource):
         #         order_info_html = data['html']
         #     else:
         #         print(f"Failed to fetch data. Status code: {response.status_code}")
-            order_id_set = int(order_id_set)
+        #    order_id_set = int(order_id_set)
         customers = Customer.query.filter_by(database=database).all()
         CUSTOMERS = [[customer.id, customer.name] for customer in customers]
         items = Item.query.filter_by(database=database).all()
         ITEMS = [[item.id, item.name, item.rate, item.unit] for item in items]
         return {
             "orders_data": ORDERS_DATA,"items": ITEMS,"customers": CUSTOMERS,"show_flag": show_flag,"segment": segment,
-            "today": date.today(),"order_info_html": order_info_html,"order_id_set": order_id_set,"categories": CATEGORIES}
+            "today": str(date.today()),"order_info_html": order_info_html,"order_id_set": order_id_set,"categories": CATEGORIES}
     
 
 class addneworder(Resource):
@@ -268,7 +268,7 @@ class addneworder(Resource):
             new_url = ammend_referer_url(referer_url, 'order_id_set', order.id)
             return {"message":"redirect","url":new_url}, 302
         
-        return {"message": "Order creation failed"}, 400
+        return {"message": "check Input"}, 400
 
     
 class PurchaseOrderBreakupResource(Resource):
@@ -283,15 +283,18 @@ class PurchaseOrderBreakupResource(Resource):
             result = []
             if item_id:
                 item = Item.query.filter_by(database=database, id=item_id).first()
+                print(item)
                 if item:
                     orders = Order.query.filter_by(database=database, status="Active", order_type=1).all()
+                    print(orders)
                     for order in orders:
                         for order_item in order.orderitems:
                             if order_item.item.id == item.id:
                                 result.append({
                                     "code": item.code,"name": item.name,"item_id": item.id,"order_item_id": order_item.id,"customer_name": order.customer.name,
-                                    "dispatch_date": order.despdate,"note": order.note,"unit": order_item.item_unit,"order_qty": order_item.order_qty,"dispatch_qty": order_item.dispatch_qty})
-            return jsonify(result), 200
+                                    "dispatch_date": str(order.despdate),"note": order.note,"unit": order_item.item_unit,"order_qty": order_item.order_qty,"dispatch_qty": order_item.dispatch_qty})
+            print(result)
+            return jsonify(result)
         except Exception as e:
             return {"message": f"An error occurred: {e}"}, 500
 
@@ -309,11 +312,9 @@ def get_conversion_factor(database, item, unit_name):
 class ReceiveChallan(Resource):
     @jwt_required()
     @requires_role(["PURCHASE"], 0)
-    def get(self):
+    def get(self, order_id = None):
         current_user = get_jwt_identity()
-        data = request.get_json()
         database = Data.query.filter_by(id=current_user["data"]).first()
-        order_id = data.get("order_id")
         DATA = {"order_info": None, "order_items": None}
         if order_id:
             database = Data.query.filter_by(id=current_user["data"]).first()
@@ -329,7 +330,7 @@ class ReceiveChallan(Resource):
         inventory_stock_df = pd.DataFrame(inventory_stock_data, columns=["item_id", "Item Name", "Item Unit", "total_stock"])
         inventory_dict = inventory_stock_df.set_index("item_id").to_dict(orient="index")
         
-        return {"DATA": DATA,"TODAY": date.today(),"INVENTORY_DATA": inventory_dict}
+        return {"DATA": DATA,"TODAY": str(date.today()),"INVENTORY_DATA": inventory_dict}
     
     @jwt_required()
     @requires_role(["PURCHASE"], 0)
@@ -379,12 +380,14 @@ class ReceiveChallan(Resource):
                 for number in numbers_list:
                     try:
                         SEND_CUSTOM_MESSAGE(f"Items saved for receiving of purchase order, {order.customer.name} by {user.name}!", number)
+                        res.append([f"Items saved for receiving of purchase order, {order.customer.name} by {user.name}!", number])
                     except:
                         continue
                 return {"message":f"Items saved for receiving of purchase order, {order.customer.name} by {user.name}!"}, 200
             for number in numbers_list:
                 try:
                     SEND_CUSTOM_MESSAGE(f"Items Received of purchase order, {order.customer.name} by {user.name}!", number)
+                    res.append([f"Items Received of purchase order, {order.customer.name} by {user.name}!", number])
                 except:
                     continue
             #return redirect("/purchase?show_flag=Dispatched", code=302)

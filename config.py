@@ -1,7 +1,9 @@
 from celery import Celery, Task
 from flask import Flask
+from flask_cors import CORS
 
 app = Flask(__name__, template_folder='templates')
+CORS(app)
 def celery_init_app(app: Flask) -> Celery:
     class FlaskTask(Task):
         def __call__(self, *args: object, **kwargs: object) -> object:
@@ -24,5 +26,13 @@ app.config.from_mapping(
     )
 
 app.config.from_prefixed_env()
-celery_init_app(app)
+celery_app = celery_init_app(app)
+
+# Adding periodic task schedule configuration
+celery_app.conf.beat_schedule = {
+    'periodic-task-every-10-seconds': {
+        'task': 'bgtasks.periodic_task',
+        'schedule': 10.0,  # Run every 10 seconds
+    },
+}
     
